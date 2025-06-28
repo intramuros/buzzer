@@ -21,7 +21,7 @@ use common::*;
 // Holds all game states and player connections
 #[derive(Default)]
 struct AppState {
-    games: DashMap<u32, GameState>,
+    games: DashMap<String, GameState>,
     // Maps a player's unique ID to their WebSocket sender
     connections: DashMap<Uuid, mpsc::UnboundedSender<Message>>,
 }
@@ -177,7 +177,7 @@ async fn send_to_player(player_id: Uuid, message: &S2C, state: &SharedState) {
 }
 
 /// Helper to broadcast the current game state to all players in a game
-async fn broadcast_state_update(game_code: &u32, state: &SharedState) {
+async fn broadcast_state_update(game_code: &str, state: &SharedState) {
     if let Some(game) = state.games.get(game_code) {
         let update_msg = S2C::GameStateUpdate { game_state: game.to_json() };
         for player_ref in game.players.iter() {
@@ -187,10 +187,10 @@ async fn broadcast_state_update(game_code: &u32, state: &SharedState) {
     }
 }
 
-fn generate_game_code(state: &SharedState) -> u32 {
+fn generate_game_code(state: &SharedState) -> String {
     loop {
         let mut rng = rand::rng();
-        let code = rng.random_range(1000..9999);
+        let code = rng.random_range(1000..9999).to_string();
         if !state.games.contains_key(&code) {
             return code;
         }

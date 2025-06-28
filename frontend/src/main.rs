@@ -12,7 +12,7 @@ struct AppContext {
     ws_tx: Signal<Option<SplitSink<WebSocket, Message>>>,
     game_state: Signal<Option<GameState>>,
     player_id: Signal<Option<Uuid>>,
-    game_code: Signal<Option<u32>>,
+    game_code: Signal<Option<String>>,
     error_message: Signal<Option<String>>,
 }
 
@@ -57,7 +57,7 @@ fn App() -> Element {
     let mut ws_tx = use_signal::<Option<SplitSink<WebSocket, Message>>>(|| None);
     let mut game_state = use_signal::<Option<GameState>>(|| None);
     let mut player_id = use_signal::<Option<Uuid>>(|| None);
-    let mut game_code = use_signal::<Option<u32>>(|| None);
+    let mut game_code = use_signal::<Option<String>>(|| None);
     let mut error_message = use_signal::<Option<String>>(|| None);
 
     // Provide the context to all child components
@@ -124,14 +124,14 @@ enum Route {
     #[route("/")]
     Home {},
     #[route("/game/:code")]
-    GameRoom { code: u32 },
+    GameRoom { code: String },
 }
 
 #[component]
 fn Home() -> Element {
     let mut app_ctx = use_context::<AppContext>();
     let mut name = use_signal(String::new);
-    let mut join_code = use_signal(|| 0);
+    let mut join_code = use_signal(|| String::new());
 
     let on_create_game = move |_| {
         if !name().is_empty() {
@@ -141,7 +141,7 @@ fn Home() -> Element {
 
     let mut app_ctx = use_context::<AppContext>();
     let on_join_game = move |_| {
-        if !name().is_empty() && !join_code() != 0 {
+        if !name().is_empty() && !join_code().is_empty() {
             app_ctx.send(C2S::JoinGame {
                 game_code: join_code(),
                 player_name: name(),
@@ -180,7 +180,7 @@ fn Home() -> Element {
             input {
                 placeholder: "Enter game code",
                 value: "{join_code}",
-                oninput: move |evt| join_code.set(str::parse::<u32>(&evt.value()).unwrap())
+                oninput: move |evt| join_code.set(evt.value())
             }
             button { onclick: on_join_game, "Join Game" }
         }

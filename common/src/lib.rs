@@ -55,18 +55,18 @@ impl From<GameStateJson> for GameState {
 #[serde(tag = "type")]
 pub enum C2S {
     CreateGame { host_name: String },
-    JoinGame { game_code: u32, player_name: String },
-    Buzz { game_code: u32, player_id: Uuid },
-    Lock { game_code: u32 },
-    Unlock { game_code: u32 },
-    Clear { game_code: u32 },
+    JoinGame { game_code: String, player_name: String },
+    Buzz { game_code: String, player_id: Uuid },
+    Lock { game_code: String },
+    Unlock { game_code: String },
+    Clear { game_code: String },
 }
 
 // Messages from Server to Client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum S2C {
-    GameCreated { game_code: u32, player_id: Uuid, game_state: GameStateJson },
+    GameCreated { game_code: String, player_id: Uuid, game_state: GameStateJson },
     GameJoined { player_id: Uuid, game_state: GameStateJson },
     GameStateUpdate { game_state: GameStateJson },
     Error { message: String },
