@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -16,7 +16,7 @@ type PlayersMap = HashMap<Uuid, Player>;
 pub struct GameState {
     pub host_id: Uuid,
     pub locked: bool,
-    pub buzzer_order: Vec<Uuid>,
+    pub buzzer_order: VecDeque<Uuid>,
     pub players: PlayersMap, // Using im_rc::HashMap on the frontend
 }
 
@@ -24,7 +24,7 @@ pub struct GameState {
 pub struct GameStateJson {
     host_id: Uuid,
     locked: bool,
-    buzzer_winner: Vec<Uuid>,
+    buzzer_order: VecDeque<Uuid>,
     players: PlayersMap,
 }
 
@@ -33,7 +33,7 @@ impl GameState {
         GameStateJson {
             host_id: self.host_id,
             locked: self.locked,
-            buzzer_winner: self.buzzer_order.clone(),
+            buzzer_order: self.buzzer_order.clone(),
             players: self.players.clone(),
         }
     }
@@ -44,7 +44,7 @@ impl From<GameStateJson> for GameState {
         Self {
             host_id: json.host_id,
             locked: json.locked,
-            buzzer_order: json.buzzer_winner,
+            buzzer_order: json.buzzer_order,
             players: json.players,
         }
     }
@@ -53,8 +53,8 @@ impl From<GameStateJson> for GameState {
 // Messages from Client to Server
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
-pub enum C2S {
-    CreateGame { host_name: String },
+pub enum ClientToServer {
+    CreateGame,
     JoinGame { game_code: String, player_name: String },
     Buzz { game_code: String, player_id: Uuid },
     Lock { game_code: String },
@@ -65,7 +65,7 @@ pub enum C2S {
 // Messages from Server to Client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
-pub enum S2C {
+pub enum ServerToClient {
     GameCreated { game_code: String, player_id: Uuid, game_state: GameStateJson },
     GameJoined { player_id: Uuid, game_state: GameStateJson },
     GameStateUpdate { game_state: GameStateJson },

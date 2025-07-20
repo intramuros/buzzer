@@ -5,19 +5,26 @@ edition = "2021"
 
 [dependencies]
 common = { path = "../common"}
-dioxus = { version = "0.5", features = ["web", "router"] }
+dioxus = { version = "0.6.1", features = ["web", "router"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 uuid = { version = "1.6", features = ["v4", "serde", "js"] }
-# getrandom = { version = "0.2", features = ["js"] }
 log = "0.4.17"
 wasm-bindgen-futures = "0.4"
 futures-util = { version = "0.3", features = ["sink"] }
 im-rc = "15"
+tokio = { version = "1.46.1", features = ["time"] }
 
 # Required for WebSockets in WASM
 gloo-net = { version = "0.5", features = ["websocket"] }
 wasm-logger = "0.2.0"
+
+[features]
+default = []
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+mobile = ["dioxus/mobile"]
+# server = ["dioxus/server", "dep:rusqlite"]
 
 [profile]
 

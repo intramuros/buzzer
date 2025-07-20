@@ -10,9 +10,10 @@ use axum::{
 use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
-use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use std::{collections::{HashMap, VecDeque}, net::SocketAddr, sync::Arc};
 use tokio::sync::mpsc;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::{cors::{Any, CorsLayer}, trace::DefaultMakeSpan};
+use tower_http::trace::TraceLayer;
 use tracing::{info, warn};
 use uuid::Uuid;
 use common::*;
@@ -39,6 +40,10 @@ async fn main() {
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .with_state(state)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(DefaultMakeSpan::default().include_headers(true)),
+        )
         .layer(cors);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
@@ -73,11 +78,11 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     });
 
     let recv_state = state.clone();
-    
+
     // This task handles incoming messages from the WebSocket client
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = ws_receiver.next().await {
-            match serde_json::from_str::<C2S>(&text) {
+            match serde_json::from_str::<ClientToServer>(&text) {
                 // Use the cloned state here
                 Ok(msg) => handle_c2s_message(msg, player_id, recv_state.clone()).await,
                 Err(e) => warn!("Failed to parse C2S message: {}", e),
@@ -104,21 +109,27 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     }
 }
 
-async fn handle_c2s_message(msg: C2S, player_id: Uuid, state: SharedState) {
+async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedState) {
     match msg {
-        C2S::CreateGame { host_name } => {
+        ClientToServer::CreateGame  => {
             let game_code = generate_game_code(&state);
-            let mut game_state = GameState {
+
+            // Create a map and add the host to it immediately
+            let mut players = HashMap::new();
+            // The `ClientToServer` protocol should ideally be changed to include the host's name
+            // For now, we'll use a placeholder name.
+            players.insert(player_id, Player { name: "Host".to_string() });
+
+            let game_state = GameState {
                 host_id: player_id,
                 locked: true,
-                buzzer_order: vec![],
-                players: HashMap::new(),
+                buzzer_order: VecDeque::new(),
+                players,
             };
-            game_state.players.insert(player_id, Player { name: host_name });
 
             info!("Game created: {} by player {}", game_code, player_id);
 
-            let response = S2C::GameCreated {
+            let response = ServerToClient::GameCreated {
                 game_code: game_code.clone(),
                 player_id,
                 game_state: game_state.to_json(),
@@ -126,39 +137,41 @@ async fn handle_c2s_message(msg: C2S, player_id: Uuid, state: SharedState) {
             state.games.insert(game_code, game_state.clone());
             send_to_player(player_id, &response, &state).await;
         }
-        C2S::JoinGame { game_code, player_name } => {
+        ClientToServer::JoinGame { game_code, player_name } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
+                info!("Insert player {}", player_id);
                 game.players.insert(player_id, Player { name: player_name });
-                
-                let response = S2C::GameJoined { player_id, game_state: game.to_json() };
+                let response = ServerToClient::GameJoined { player_id, game_state: game.to_json() };
+                info!("Response to player {}", player_id);
                 send_to_player(player_id, &response, &state).await;
+                info!("Broadcast state update, game code {}", game_code);
                 broadcast_state_update(&game_code, &state).await;
             } else {
-                let err = S2C::Error { message: format!("Game '{}' not found.", game_code) };
+                let err = ServerToClient::Error { message: format!("Game '{}' not found.", game_code) };
                 send_to_player(player_id, &err, &state).await;
             }
         }
-        C2S::Buzz { game_code, player_id } => {
+        ClientToServer::Buzz { game_code, player_id } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 if !game.locked {
                     info!("Player {} buzzed in game {}", player_id, game_code);
-                    game.buzzer_order.push(player_id);
+                    game.buzzer_order.push_back(player_id);
                     broadcast_state_update(&game_code, &state).await;
                 }
             }
         }
-        C2S::Lock { ref game_code } | C2S::Unlock { ref game_code } => {
+        ClientToServer::Lock { ref game_code } | ClientToServer::Unlock { ref game_code } => {
             if let Some(mut game) = state.games.get_mut(game_code) {
                 if game.host_id == player_id { // Only host can lock/unlock
-                    game.locked = matches!(msg, C2S::Lock { .. });
+                    game.locked = matches!(msg, ClientToServer::Lock { .. });
                     broadcast_state_update(&game_code, &state).await;
                 }
             }
         }
-        C2S::Clear { game_code } => {
+        ClientToServer::Clear { game_code } => {
              if let Some(mut game) = state.games.get_mut(&game_code) {
                 if game.host_id == player_id { // Only host can clear
-                    game.buzzer_order = vec![];
+                    game.buzzer_order = VecDeque::new();
                     broadcast_state_update(&game_code, &state).await;
                 }
             }
@@ -167,9 +180,10 @@ async fn handle_c2s_message(msg: C2S, player_id: Uuid, state: SharedState) {
 }
 
 /// Helper to serialize a message and send it to a single player
-async fn send_to_player(player_id: Uuid, message: &S2C, state: &SharedState) {
+async fn send_to_player(player_id: Uuid, message: &ServerToClient, state: &SharedState) {
     if let Some(tx) = state.connections.get(&player_id) {
         let json_msg = serde_json::to_string(message).unwrap();
+        info!("Sending message");
         if tx.send(Message::Text(json_msg)).is_err() {
             warn!("Failed to send message to player {}", player_id);
         }
@@ -179,9 +193,11 @@ async fn send_to_player(player_id: Uuid, message: &S2C, state: &SharedState) {
 /// Helper to broadcast the current game state to all players in a game
 async fn broadcast_state_update(game_code: &str, state: &SharedState) {
     if let Some(game) = state.games.get(game_code) {
-        let update_msg = S2C::GameStateUpdate { game_state: game.to_json() };
+        info!("Broadcast game: {}", game_code);
+        let update_msg = ServerToClient::GameStateUpdate { game_state: game.to_json() };
         for player_ref in game.players.iter() {
             let player_id = *player_ref.0;
+            info!("Send message to player {}", player_id);
             send_to_player(player_id, &update_msg, state).await;
         }
     }
@@ -190,7 +206,7 @@ async fn broadcast_state_update(game_code: &str, state: &SharedState) {
 fn generate_game_code(state: &SharedState) -> String {
     loop {
         let mut rng = rand::rng();
-        let code = rng.random_range(1000..9999).to_string();
+        let code = rng.random_range(10000..99999).to_string();
         if !state.games.contains_key(&code) {
             return code;
         }
