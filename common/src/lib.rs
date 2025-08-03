@@ -1,22 +1,47 @@
 use std::collections::{HashMap, VecDeque};
 
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
-pub struct Player {
-    pub name: String,
+pub static HOST: &'static str = "HOST";
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum Actor {
+    Host {
+        id: Uuid
+    },
+    Player {
+        id: Uuid,
+        name: String,
+    }
+}
+
+impl Actor {
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Host {..} => HOST,
+            Self::Player { name , ..} => name,
+        }
+    }
+
+    pub fn id(&self) -> Uuid {
+        match self {
+            Self::Host { id } => *id,
+            Self::Player { id , ..} => *id,
+        }
+    }
 }
 
 // Using a special DashMap type that works with Dioxus signals
-type PlayersMap = HashMap<Uuid, Player>;
+type PlayersMap = DashMap<Uuid, Actor>;
 
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct GameState {
     pub host_id: Uuid,
     pub locked: bool,
-    pub buzzer_order: VecDeque<Uuid>,
+    pub buzzer_order: VecDeque<(Uuid, String)>,
     pub players: PlayersMap, // Using im_rc::HashMap on the frontend
 }
 
@@ -24,8 +49,8 @@ pub struct GameState {
 pub struct GameStateJson {
     host_id: Uuid,
     locked: bool,
-    buzzer_order: VecDeque<Uuid>,
-    players: PlayersMap,
+    buzzer_order: VecDeque<(Uuid, String)>,
+    players: HashMap<Uuid, Actor>,
 }
 
 impl GameState {
@@ -34,7 +59,7 @@ impl GameState {
             host_id: self.host_id,
             locked: self.locked,
             buzzer_order: self.buzzer_order.clone(),
-            players: self.players.clone(),
+            players: self.players.clone().into_iter().collect(),
         }
     }
 }
@@ -45,7 +70,7 @@ impl From<GameStateJson> for GameState {
             host_id: json.host_id,
             locked: json.locked,
             buzzer_order: json.buzzer_order,
-            players: json.players,
+            players: DashMap::from_iter(json.players.into_iter()),
         }
     }
 }
@@ -55,18 +80,18 @@ impl From<GameStateJson> for GameState {
 #[serde(tag = "type")]
 pub enum ClientToServer {
     CreateGame,
-    JoinGame { game_code: String, player_name: String },
-    Buzz { game_code: String, player_id: Uuid },
-    Lock { game_code: String },
-    Unlock { game_code: String },
-    Clear { game_code: String },
+    JoinGame { game_code: usize, player_name: String },
+    Buzz { game_code: usize, player_id: Uuid },
+    Lock { game_code: usize },
+    Unlock { game_code: usize },
+    Clear { game_code: usize },
 }
 
 // Messages from Server to Client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerToClient {
-    GameCreated { game_code: String, player_id: Uuid, game_state: GameStateJson },
+    GameCreated { game_code: usize, player_id: Uuid, game_state: GameStateJson },
     GameJoined { player_id: Uuid, game_state: GameStateJson },
     GameStateUpdate { game_state: GameStateJson },
     Error { message: String },

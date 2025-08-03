@@ -7,22 +7,24 @@ use axum::{
     routing::get,
     Router,
 };
+use common::*;
 use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
-use std::{collections::{HashMap, VecDeque}, net::SocketAddr, sync::Arc};
+use std::{collections::VecDeque, net::SocketAddr, sync::Arc};
 use tokio::sync::mpsc;
-use tower_http::{cors::{Any, CorsLayer}, trace::DefaultMakeSpan};
 use tower_http::trace::TraceLayer;
+use tower_http::{
+    cors::{Any, CorsLayer},
+    trace::DefaultMakeSpan,
+};
 use tracing::{info, warn};
 use uuid::Uuid;
-use common::*;
-
 
 // Holds all game states and player connections
 #[derive(Default)]
 struct AppState {
-    games: DashMap<String, GameState>,
+    games: DashMap<usize, GameState>,
     // Maps a player's unique ID to their WebSocket sender
     connections: DashMap<Uuid, mpsc::UnboundedSender<Message>>,
 }
@@ -53,10 +55,7 @@ async fn main() {
         .unwrap();
 }
 
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<SharedState>,
-) -> Response {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<SharedState>) -> Response {
     ws.on_upgrade(|socket| handle_socket(socket, state))
 }
 
@@ -100,10 +99,10 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     // Cleanup: remove player connection and from any game they were in
     // This `state` is now valid because we only moved the clone.
     state.connections.remove(&player_id);
-    for mut game in state.games.iter_mut() {
+    for game in state.games.iter_mut() {
         if game.players.remove(&player_id).is_some() {
             info!("Removed player {} from game {}", player_id, game.key());
-            broadcast_state_update(game.key(), &state).await;
+            broadcast_state_update(&game, &state).await;
             break;
         }
     }
@@ -111,18 +110,16 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
 
 async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedState) {
     match msg {
-        ClientToServer::CreateGame  => {
+        ClientToServer::CreateGame => {
             let game_code = generate_game_code(&state);
 
             // Create a map and add the host to it immediately
-            let mut players = HashMap::new();
-            // The `ClientToServer` protocol should ideally be changed to include the host's name
-            // For now, we'll use a placeholder name.
-            players.insert(player_id, Player { name: "Host".to_string() });
+            let players = DashMap::new();
+            players.insert(player_id, Actor::Host { id: player_id });
 
             let game_state = GameState {
                 host_id: player_id,
-                locked: true,
+                locked: false,
                 buzzer_order: VecDeque::new(),
                 players,
             };
@@ -137,42 +134,63 @@ async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedS
             state.games.insert(game_code, game_state.clone());
             send_to_player(player_id, &response, &state).await;
         }
-        ClientToServer::JoinGame { game_code, player_name } => {
-            if let Some(mut game) = state.games.get_mut(&game_code) {
-                info!("Insert player {}", player_id);
-                game.players.insert(player_id, Player { name: player_name });
-                let response = ServerToClient::GameJoined { player_id, game_state: game.to_json() };
-                info!("Response to player {}", player_id);
+        ClientToServer::JoinGame {
+            game_code,
+            player_name,
+        } => {
+            if let Some(game) = state.games.get_mut(&game_code) {
+                game.players.insert(
+                    player_id,
+                    Actor::Player {
+                        id: player_id,
+                        name: player_name,
+                    },
+                );
+                let response = ServerToClient::GameJoined {
+                    player_id,
+                    game_state: game.to_json(),
+                };
                 send_to_player(player_id, &response, &state).await;
-                info!("Broadcast state update, game code {}", game_code);
-                broadcast_state_update(&game_code, &state).await;
+                broadcast_state_update(&game, &state).await;
             } else {
-                let err = ServerToClient::Error { message: format!("Game '{}' not found.", game_code) };
+                let err = ServerToClient::Error {
+                    message: format!("Game '{}' not found.", game_code),
+                };
                 send_to_player(player_id, &err, &state).await;
             }
         }
-        ClientToServer::Buzz { game_code, player_id } => {
+        ClientToServer::Buzz {
+            game_code,
+            player_id,
+        } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 if !game.locked {
-                    info!("Player {} buzzed in game {}", player_id, game_code);
-                    game.buzzer_order.push_back(player_id);
-                    broadcast_state_update(&game_code, &state).await;
+                    let Some(player_name) =
+                        game.players.get(&player_id).map(|p| p.name().to_owned())
+                    else {
+                        return;
+                    };
+                    info!("Player {} buzzed in game {}", player_name, game_code);
+                    game.buzzer_order.push_back((player_id, player_name));
+                    broadcast_state_update(&game, &state).await;
                 }
             }
         }
         ClientToServer::Lock { ref game_code } | ClientToServer::Unlock { ref game_code } => {
             if let Some(mut game) = state.games.get_mut(game_code) {
-                if game.host_id == player_id { // Only host can lock/unlock
+                if game.host_id == player_id {
+                    // Only host can lock/unlock
                     game.locked = matches!(msg, ClientToServer::Lock { .. });
-                    broadcast_state_update(&game_code, &state).await;
+                    broadcast_state_update(&game, &state).await;
                 }
             }
         }
         ClientToServer::Clear { game_code } => {
-             if let Some(mut game) = state.games.get_mut(&game_code) {
-                if game.host_id == player_id { // Only host can clear
+            if let Some(mut game) = state.games.get_mut(&game_code) {
+                if game.host_id == player_id {
+                    // Only host can clear
                     game.buzzer_order = VecDeque::new();
-                    broadcast_state_update(&game_code, &state).await;
+                    broadcast_state_update(&game, &state).await;
                 }
             }
         }
@@ -183,7 +201,6 @@ async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedS
 async fn send_to_player(player_id: Uuid, message: &ServerToClient, state: &SharedState) {
     if let Some(tx) = state.connections.get(&player_id) {
         let json_msg = serde_json::to_string(message).unwrap();
-        info!("Sending message");
         if tx.send(Message::Text(json_msg)).is_err() {
             warn!("Failed to send message to player {}", player_id);
         }
@@ -191,22 +208,20 @@ async fn send_to_player(player_id: Uuid, message: &ServerToClient, state: &Share
 }
 
 /// Helper to broadcast the current game state to all players in a game
-async fn broadcast_state_update(game_code: &str, state: &SharedState) {
-    if let Some(game) = state.games.get(game_code) {
-        info!("Broadcast game: {}", game_code);
-        let update_msg = ServerToClient::GameStateUpdate { game_state: game.to_json() };
-        for player_ref in game.players.iter() {
-            let player_id = *player_ref.0;
-            info!("Send message to player {}", player_id);
-            send_to_player(player_id, &update_msg, state).await;
-        }
+async fn broadcast_state_update(game: &GameState, state: &SharedState) {
+    let update_msg = ServerToClient::GameStateUpdate {
+        game_state: game.to_json(),
+    };
+    for player_ref in game.players.iter() {
+        let player_id = player_ref.id();
+        send_to_player(player_id, &update_msg, state).await;
     }
 }
 
-fn generate_game_code(state: &SharedState) -> String {
+fn generate_game_code(state: &SharedState) -> usize {
     loop {
         let mut rng = rand::rng();
-        let code = rng.random_range(10000..99999).to_string();
+        let code = rng.random_range(10000..99999);
         if !state.games.contains_key(&code) {
             return code;
         }

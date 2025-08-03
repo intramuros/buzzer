@@ -1,34 +1,34 @@
 #![allow(non_snake_case)]
+use common::*;
 use dioxus::prelude::*;
 use futures_util::{stream::SplitSink, SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
-use log::{error, info};
-use uuid::Uuid;
-use common::*;
 use host::*;
+use log::{error, info};
 use std::fmt;
+use std::str::FromStr;
+use uuid::Uuid;
 
 mod host;
 
 static CSS: Asset = asset!("/assets/main.css");
-
 
 #[derive(Clone, Copy)]
 struct AppContext {
     ws_tx: Signal<Option<SplitSink<WebSocket, Message>>>,
     game_state: Signal<Option<GameState>>,
     player_id: Signal<Option<Uuid>>,
-    game_code: Signal<Option<String>>,
+    game_code: Signal<Option<usize>>,
     error_message: Signal<Option<String>>,
 }
 
 impl fmt::Debug for AppContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("AppContext")
-         .field("game_state", &self.game_state)
-         .field("game_code", &self.game_code)
-         .field("player_id", &self.player_id)
-         .finish()
+            .field("game_state", &self.game_state)
+            .field("game_code", &self.game_code)
+            .field("player_id", &self.player_id)
+            .finish()
     }
 }
 
@@ -61,23 +61,31 @@ impl AppContext {
     }
 }
 
-
 fn main() {
     wasm_logger::init(wasm_logger::Config::default());
     launch(App);
 }
 
+// in main.rs
+
 #[component]
 fn App() -> Element {
+    rsx! {
+        Router::<Route> {}
+    }
+}
+
+#[component]
+fn AppLayout() -> Element {
     // Centralized state management using signals
     let ws_tx = use_signal::<Option<SplitSink<WebSocket, Message>>>(|| None);
     let game_state = use_signal::<Option<GameState>>(|| None);
     let player_id = use_signal::<Option<Uuid>>(|| None);
-    let game_code = use_signal::<Option<String>>(|| None);
+    let game_code = use_signal::<Option<usize>>(|| None);
     let error_message = use_signal::<Option<String>>(|| None);
 
     // Provide the context to all child components
-    use_context_provider(|| AppContext {
+    let mut app_ctx = use_context_provider(|| AppContext {
         ws_tx,
         game_state,
         player_id,
@@ -85,31 +93,7 @@ fn App() -> Element {
         error_message,
     });
 
-    rsx! {
-        document::Stylesheet { href: CSS }
-        Router::<Route> {}
-    }
-}
-
-#[derive(Routable, Clone, PartialEq)]
-#[rustfmt::skip]
-enum Route {
-    #[route("/")]
-    Home {},
-    #[route("/game/:code")]
-    GameRoom { code: String },
-    // PageNotFound is a catch all route that will match any route and placing the matched segments in the route field
-    #[route("/:..route")]
-    PageNotFound { route: Vec<String> },
-}
-
-#[component]
-fn Home() -> Element {
-    let mut app_ctx = use_context::<AppContext>();
-    let mut name = use_signal(String::new);
-    let mut join_code = use_signal(|| String::new());
     let nav = navigator();
-
     // Effect to establish and manage WebSocket connection
     use_effect(move || {
         spawn(async move {
@@ -126,14 +110,21 @@ fn Home() -> Element {
                         *app_ctx.error_message.write() = None;
 
                         match msg {
-                            ServerToClient::GameCreated { game_code: code, player_id: id, game_state: state } => {
+                            ServerToClient::GameCreated {
+                                game_code: code,
+                                player_id: id,
+                                game_state: state,
+                            } => {
                                 *app_ctx.game_code.write() = Some(code.clone());
                                 *app_ctx.player_id.write() = Some(id);
                                 *app_ctx.game_state.write() = Some(state.into());
 
                                 nav.push(Route::GameRoom { code });
                             }
-                            ServerToClient::GameJoined { player_id: id, game_state: state } => {
+                            ServerToClient::GameJoined {
+                                player_id: id,
+                                game_state: state,
+                            } => {
                                 info!("ServerToClient: game joined");
                                 *app_ctx.player_id.write() = Some(id);
                                 *app_ctx.game_state.write() = Some(state.into());
@@ -142,7 +133,7 @@ fn Home() -> Element {
                                     nav.push(Route::GameRoom { code });
                                 }
                             }
-                             ServerToClient::GameStateUpdate { game_state: state } => {
+                            ServerToClient::GameStateUpdate { game_state: state } => {
                                 *app_ctx.game_state.write() = Some(state.into());
                             }
                             ServerToClient::Error { message } => {
@@ -157,28 +148,50 @@ fn Home() -> Element {
         });
     });
 
+    rsx! {
+        document::Stylesheet { href: CSS }
+        Outlet::<Route> {}
+    }
+}
+
+#[derive(Routable, Clone, PartialEq)]
+#[rustfmt::skip]
+enum Route {
+    #[layout(AppLayout)]
+        #[route("/")]
+        Home {},
+        #[route("/game/:code")]
+        GameRoom { code: usize },
+    #[end_layout]
+    // PageNotFound is a catch all route that will match any route and placing the matched segments in the route field
+    #[route("/:..route")]
+    PageNotFound { route: Vec<String> },
+}
+
+#[component]
+fn Home() -> Element {
+    let mut app_ctx = use_context::<AppContext>();
+    let mut name = use_signal(String::new);
+    let mut join_code = use_signal(|| String::default());
+
     let on_create_game = move |_| {
         info!("Creating game");
         app_ctx.send(ClientToServer::CreateGame);
     };
 
-    let mut app_ctx = use_context::<AppContext>();
     let on_join_game = move |_| {
-        let code = join_code();
-        info!("Joining game with code: {code}");
-        if !name().is_empty() && !code.is_empty() {
+        if !name().is_empty() && !join_code().is_empty() {
             info!("Send info to server");
+            let game_code = usize::from_str(&join_code()).unwrap();
             app_ctx.send(ClientToServer::JoinGame {
-                game_code: join_code(),
+                game_code,
                 player_name: name(),
             });
             info!("Write game code");
-            *app_ctx.game_code.write() = Some(code.clone());
-            // nav.push(Route::GameRoom { code });
+            *app_ctx.game_code.write() = Some(game_code);
         }
     };
 
-    let app_ctx = use_context::<AppContext>();
     rsx! {
         h1 { "Quiz Button" }
         if let Some(err) = (app_ctx.error_message)() {
@@ -213,9 +226,9 @@ fn Home() -> Element {
             // Wrap the button in its own div to ensure it's on a new line
             div {
                 margin_top: "10px", // Optional: Adds some space above the button
-                button { 
-                    onclick: on_join_game, 
-                    "Join Game" 
+                button {
+                    onclick: on_join_game,
+                    "Join Game"
                 }
             }
         }
