@@ -5,11 +5,13 @@ use futures_util::{stream::SplitSink, SinkExt, StreamExt};
 use gloo_net::websocket::{futures::WebSocket, Message};
 use host::*;
 use log::{error, info};
+use player::PlayerView;
 use std::fmt;
 use std::str::FromStr;
 use uuid::Uuid;
 
 mod host;
+mod player;
 
 static CSS: Asset = asset!("/assets/main.css");
 
@@ -20,6 +22,7 @@ struct AppContext {
     player_id: Signal<Option<Uuid>>,
     game_code: Signal<Option<usize>>,
     error_message: Signal<Option<String>>,
+    locally_locked: Signal<bool>,
 }
 
 impl fmt::Debug for AppContext {
@@ -83,6 +86,7 @@ fn AppLayout() -> Element {
     let player_id = use_signal::<Option<Uuid>>(|| None);
     let game_code = use_signal::<Option<usize>>(|| None);
     let error_message = use_signal::<Option<String>>(|| None);
+    let locally_locked = use_signal::<bool>(|| false);
 
     // Provide the context to all child components
     let mut app_ctx = use_context_provider(|| AppContext {
@@ -91,6 +95,7 @@ fn AppLayout() -> Element {
         player_id,
         game_code,
         error_message,
+        locally_locked,
     });
 
     let nav = navigator();
@@ -134,7 +139,11 @@ fn AppLayout() -> Element {
                                 }
                             }
                             ServerToClient::GameStateUpdate { game_state: state } => {
-                                *app_ctx.game_state.write() = Some(state.into());
+                                let state: GameState = state.into();
+                                if state.globally_locked != *app_ctx.locally_locked.read() {
+                                    *app_ctx.locally_locked.write() = state.globally_locked;
+                                }
+                                *app_ctx.game_state.write() = Some(state);
                             }
                             ServerToClient::Error { message } => {
                                 *app_ctx.error_message.write() = Some(message);
@@ -236,10 +245,73 @@ fn Home() -> Element {
 }
 
 #[component]
+pub fn GameRoom(code: String) -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let my_id = app_ctx.player_id.read();
+    let nav = navigator();
+    info!("Game state: {:?}", &app_ctx.game_state);
+    if app_ctx.game_state.read().is_none() {
+        nav.push(Route::Home {});
+    }
+    let host_id = app_ctx.game_state.read().as_ref().unwrap().host_id;
+    let is_host = *my_id == Some(host_id);
+
+    rsx! {
+        div {
+            class: "game-room-container",
+            if is_host {
+                HostView {}
+            } else {
+                PlayerView {}
+            }
+            PlayerBuzzOrderList {}
+            PlayerList {}
+        }
+    }
+}
+
+#[component]
+pub fn PlayerList() -> Element {
+    let app_ctx = use_context::<AppContext>();
+
+    rsx! {
+        // Read the signal HERE. This makes the component reactive.
+        if let Some(game) = app_ctx.game_state.read().as_ref() {
+            h3 { "Players" }
+            ul { class: "player-list",
+                // You can now safely iterate.
+                for player in game.players.iter().filter(|p| p.name() != HOST) {
+                    li {
+                        span { "{player.name()}" }
+                        span { class: "score-display", " ({game.scores.get(&player.id()).unwrap_or(&0)})" }
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[component]
 fn PageNotFound(route: Vec<String>) -> Element {
     rsx! {
         h1 { "Page not found" }
         p { "We are terribly sorry, but the page you requested doesn't exist." }
         pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
+    }
+}
+
+#[component]
+pub fn PlayerBuzzOrderList() -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let game = app_ctx.game_state.read().clone().unwrap();
+    rsx! {
+        h3 { "Buzzed" }
+        ol { class: "player-list",
+            for (_, player_name) in game.buzzer_order.iter() {
+                li {
+                    "{player_name}"
+                }
+            }
+        }
     }
 }

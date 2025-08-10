@@ -16,135 +16,126 @@ html, body {
     justify-content: space-between;
 }
 
-#dogview {
-    max-height: 80vh;
-    flex-grow: 1;
-    width: 100%;
+/* #title h1 { */
+/*     margin: 0.25em; */
+/*     font-style: italic; */
+/* } */
+
+.game-room-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-}
-
-#dogview img {
-    display: block;
-    max-width: 50%;
-    max-height: 50%;
-    transform: scale(1.8);
-    border-radius: 5px;
-    border: 1px solid rgb(233, 233, 233);
-    box-shadow: 0px 0px 5px 1px rgb(216, 216, 216, 0.5);
-}
-
-#title {
-    text-align: center;
-    padding-top: 10px;
-    border-bottom: 1px solid #a8a8a8;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
-}
-
-#title a {
-    text-decoration: none;
-    color: white;
-}
-
-a#heart {
-    background-color: white;
-    color: red;
-    padding: 5px;
-    border-radius: 5px;
-}
-
-#title span {
-    width: 20px;
-}
-
-#title h1 {
-    margin: 0.25em;
-    font-style: italic;
-}
-
-#buttons {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    gap: 20px;
-    /* padding-top: 20px; */
-    padding-bottom: 20px;
-}
-
-#skip { background-color: gray }
-#save { background-color: green; }
-
-#skip, #save {
-    padding: 5px 30px 5px 30px;
-    border-radius: 3px;
-    font-size: 2rem;
-    font-weight: bold;
-    color: rgb(230, 230, 230)
-}
-
-#navbar {
-    border: 1px solid rgb(233, 233, 233);
-    border-width: 1px 0px 0px 0px;
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
+    width: 100%;
     padding: 20px;
     gap: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /* Removed min-height: 100vh to avoid stretching within #dogview */
 }
 
-#navbar a {
-    background-color: #a8a8a8;
-    border-radius: 5px;
-    border: 1px solid black;
-    text-decoration: none;
-    color: black;
-    padding: 10px 30px 10px 30px;
-}
-
-#favorites {
-    flex-grow: 1;
-    overflow: hidden;
+.game-info-container {
     display: flex;
-    flex-direction: column;
-    padding: 10px;
+    align-items: center;
+    gap: 10px;
 }
 
-#favorites-container {
-    overflow-y: auto;
-    overflow-x: hidden;
+.game-info {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin: 0;
+}
+
+.copy-button {
+    padding: 8px 16px;
+    font-size: 16px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background-color: #4CAF50;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.copy-button:hover {
+    background-color: #45a049;
+}
+
+.host-controls-title {
+    font-size: 20px;
+    text-align: center;
+    margin: 10px 0;
+}
+
+.host-controls {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
     justify-content: center;
     gap: 10px;
-    padding: 10px;
 }
 
-.favorite-dog {
-    max-height: 180px;
-    max-width: 60%;
-    position: relative;
+.control-button {
+    padding: 10px 20px;
+    font-size: 16px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    background-color: #007bff;
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.3s;
 }
 
-.favorite-dog img {
-    max-height: 150px;
-    border-radius: 5px;
-    margin: 5px;
+.control-button:hover {
+    background-color: #0056b3;
 }
 
-.favorite-dog:hover button {
-    display: block;
+.buzzer-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    /* Removed height: 100% to prevent vertical stretching */
+    padding: 20px; /* Add padding for spacing */
 }
 
-.favorite-dog button {
-    display: none;
-    position: absolute;
-    bottom: 10px;
-    left: 10px;
-    z-index: 10;
+.buzzer {
+    /* Core Fix: Make it a Circle */
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    padding: 10px 20px;
+    font-size: 2.5rem;
+    font-weight: bold;
+    text-align: center;
+    color: white;
+    background-color: chartreuse;
+    border: 4px solid #ff4d4d;
+    cursor: pointer;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.buzzer:disabled {
+    background-color: #555;
+    border-color: #777;
+    cursor: not-allowed;
+    color: #aaa;
+}
+
+.buzzer:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.player-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    text-align: center;
+}
+
+.player-list li {
+    font-size: 18px;
+    margin: 5px 0;
 }

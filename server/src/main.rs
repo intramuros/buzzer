@@ -11,7 +11,11 @@ use common::*;
 use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
-use std::{collections::VecDeque, net::SocketAddr, sync::Arc};
+use std::{
+    collections::{HashMap, VecDeque},
+    net::SocketAddr,
+    sync::Arc,
+};
 use tokio::sync::mpsc;
 use tower_http::trace::TraceLayer;
 use tower_http::{
@@ -108,55 +112,57 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     }
 }
 
-async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedState) {
+async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedState) {
     match msg {
         ClientToServer::CreateGame => {
             let game_code = generate_game_code(&state);
 
             // Create a map and add the host to it immediately
             let players = DashMap::new();
-            players.insert(player_id, Actor::Host { id: player_id });
+            players.insert(sender_id, Actor::Host { id: sender_id });
 
             let game_state = GameState {
-                host_id: player_id,
-                locked: false,
+                host_id: sender_id,
+                globally_locked: false,
                 buzzer_order: VecDeque::new(),
                 players,
+                scores: HashMap::new(),
             };
 
-            info!("Game created: {} by player {}", game_code, player_id);
+            info!("Game created: {} by player {}", game_code, sender_id);
 
             let response = ServerToClient::GameCreated {
                 game_code: game_code.clone(),
-                player_id,
+                player_id: sender_id,
                 game_state: game_state.to_json(),
             };
             state.games.insert(game_code, game_state.clone());
-            send_to_player(player_id, &response, &state).await;
+            send_to_player(sender_id, &response, &state).await;
         }
         ClientToServer::JoinGame {
             game_code,
             player_name,
         } => {
-            if let Some(game) = state.games.get_mut(&game_code) {
+            if let Some(mut game) = state.games.get_mut(&game_code) {
                 game.players.insert(
-                    player_id,
+                    sender_id,
                     Actor::Player {
-                        id: player_id,
+                        id: sender_id,
                         name: player_name,
                     },
                 );
+                game.scores.insert(sender_id, 0);
                 let response = ServerToClient::GameJoined {
-                    player_id,
+                    player_id: sender_id,
                     game_state: game.to_json(),
                 };
-                send_to_player(player_id, &response, &state).await;
+                send_to_player(sender_id, &response, &state).await;
                 broadcast_state_update(&game, &state).await;
             } else {
                 let err = ServerToClient::Error {
                     message: format!("Game '{}' not found.", game_code),
                 };
-                send_to_player(player_id, &err, &state).await;
+                send_to_player(sender_id, &err, &state).await;
             }
         }
         ClientToServer::Buzz {
@@ -164,7 +170,7 @@ async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedS
             player_id,
         } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
-                if !game.locked {
+                if !game.globally_locked {
                     let Some(player_name) =
                         game.players.get(&player_id).map(|p| p.name().to_owned())
                     else {
@@ -178,18 +184,35 @@ async fn handle_c2s_message(msg: ClientToServer, player_id: Uuid, state: SharedS
         }
         ClientToServer::Lock { ref game_code } | ClientToServer::Unlock { ref game_code } => {
             if let Some(mut game) = state.games.get_mut(game_code) {
-                if game.host_id == player_id {
+                if game.host_id == sender_id {
                     // Only host can lock/unlock
-                    game.locked = matches!(msg, ClientToServer::Lock { .. });
+                    game.globally_locked = matches!(msg, ClientToServer::Lock { .. });
                     broadcast_state_update(&game, &state).await;
                 }
             }
         }
         ClientToServer::Clear { game_code } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
-                if game.host_id == player_id {
+                if game.host_id == sender_id {
                     // Only host can clear
                     game.buzzer_order = VecDeque::new();
+                    broadcast_state_update(&game, &state).await;
+                }
+            }
+        }
+        ClientToServer::UpdateScore {
+            game_code,
+            player_id,
+            delta,
+        } => {
+            if let Some(mut game) = state.games.get_mut(&game_code) {
+                if game.host_id == player_id {
+                    let score = game.scores.entry(player_id).or_insert(0);
+                    *score = (*score + delta).max(0); // Prevent negative scores
+                    info!(
+                        "Updated score for player {} in game {}: {}",
+                        player_id, game_code, *score
+                    );
                     broadcast_state_update(&game, &state).await;
                 }
             }

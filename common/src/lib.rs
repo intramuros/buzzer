@@ -8,27 +8,22 @@ pub static HOST: &'static str = "HOST";
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum Actor {
-    Host {
-        id: Uuid
-    },
-    Player {
-        id: Uuid,
-        name: String,
-    }
+    Host { id: Uuid },
+    Player { id: Uuid, name: String },
 }
 
 impl Actor {
     pub fn name(&self) -> &str {
         match self {
-            Self::Host {..} => HOST,
-            Self::Player { name , ..} => name,
+            Self::Host { .. } => HOST,
+            Self::Player { name, .. } => name,
         }
     }
 
     pub fn id(&self) -> Uuid {
         match self {
             Self::Host { id } => *id,
-            Self::Player { id , ..} => *id,
+            Self::Player { id, .. } => *id,
         }
     }
 }
@@ -36,13 +31,13 @@ impl Actor {
 // Using a special DashMap type that works with Dioxus signals
 type PlayersMap = DashMap<Uuid, Actor>;
 
-
 #[derive(Debug, Clone, Default)]
 pub struct GameState {
     pub host_id: Uuid,
-    pub locked: bool,
+    pub globally_locked: bool,
     pub buzzer_order: VecDeque<(Uuid, String)>,
     pub players: PlayersMap, // Using im_rc::HashMap on the frontend
+    pub scores: HashMap<Uuid, i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,7 +52,7 @@ impl GameState {
     pub fn to_json(&self) -> GameStateJson {
         GameStateJson {
             host_id: self.host_id,
-            locked: self.locked,
+            locked: self.globally_locked,
             buzzer_order: self.buzzer_order.clone(),
             players: self.players.clone().into_iter().collect(),
         }
@@ -68,9 +63,10 @@ impl From<GameStateJson> for GameState {
     fn from(json: GameStateJson) -> Self {
         Self {
             host_id: json.host_id,
-            locked: json.locked,
+            globally_locked: json.locked,
             buzzer_order: json.buzzer_order,
             players: DashMap::from_iter(json.players.into_iter()),
+            scores: HashMap::new(),
         }
     }
 }
@@ -80,19 +76,47 @@ impl From<GameStateJson> for GameState {
 #[serde(tag = "type")]
 pub enum ClientToServer {
     CreateGame,
-    JoinGame { game_code: usize, player_name: String },
-    Buzz { game_code: usize, player_id: Uuid },
-    Lock { game_code: usize },
-    Unlock { game_code: usize },
-    Clear { game_code: usize },
+    JoinGame {
+        game_code: usize,
+        player_name: String,
+    },
+    Buzz {
+        game_code: usize,
+        player_id: Uuid,
+    },
+    Lock {
+        game_code: usize,
+    },
+    Unlock {
+        game_code: usize,
+    },
+    Clear {
+        game_code: usize,
+    },
+    UpdateScore {
+        game_code: usize,
+        player_id: Uuid,
+        delta: i32,
+    },
 }
 
 // Messages from Server to Client
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerToClient {
-    GameCreated { game_code: usize, player_id: Uuid, game_state: GameStateJson },
-    GameJoined { player_id: Uuid, game_state: GameStateJson },
-    GameStateUpdate { game_state: GameStateJson },
-    Error { message: String },
+    GameCreated {
+        game_code: usize,
+        player_id: Uuid,
+        game_state: GameStateJson,
+    },
+    GameJoined {
+        player_id: Uuid,
+        game_state: GameStateJson,
+    },
+    GameStateUpdate {
+        game_state: GameStateJson,
+    },
+    Error {
+        message: String,
+    },
 }
