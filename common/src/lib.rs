@@ -38,6 +38,7 @@ pub struct GameState {
     pub buzzer_order: VecDeque<(Uuid, String)>,
     pub players: PlayersMap, // Using im_rc::HashMap on the frontend
     pub scores: HashMap<Uuid, i32>,
+    pub player_join_order: Vec<Uuid>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -46,6 +47,8 @@ pub struct GameStateJson {
     locked: bool,
     buzzer_order: VecDeque<(Uuid, String)>,
     players: HashMap<Uuid, Actor>,
+    scores: HashMap<Uuid, i32>,
+    player_join_order: Vec<Uuid>,
 }
 
 impl GameState {
@@ -55,6 +58,8 @@ impl GameState {
             locked: self.globally_locked,
             buzzer_order: self.buzzer_order.clone(),
             players: self.players.clone().into_iter().collect(),
+            scores: self.scores.clone(),
+            player_join_order: self.player_join_order.clone(),
         }
     }
 }
@@ -66,7 +71,8 @@ impl From<GameStateJson> for GameState {
             globally_locked: json.locked,
             buzzer_order: json.buzzer_order,
             players: DashMap::from_iter(json.players.into_iter()),
-            scores: HashMap::new(),
+            scores: json.scores,
+            player_join_order: json.player_join_order,
         }
     }
 }
@@ -111,6 +117,7 @@ pub enum ServerToClient {
     },
     GameJoined {
         player_id: Uuid,
+        player_name: String,
         game_state: GameStateJson,
     },
     GameStateUpdate {

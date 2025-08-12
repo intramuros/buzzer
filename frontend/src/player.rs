@@ -1,16 +1,13 @@
-use crate::AppContext;
+use crate::{host::PlayerBuzzOrderList, AppContext};
 use common::*;
 use dioxus::prelude::*;
 
 #[component]
 pub fn PlayerView() -> Element {
     let app_ctx = use_context::<AppContext>();
-    // Get the current player's ID once.
     let my_id = *app_ctx.player_id.read();
 
     let on_buzz = move |_| {
-        // We no longer need to manage a local lock. Just send the message.
-        // The UI will update automatically when the server confirms the buzz.
         if let Some(ref id) = my_id {
             app_ctx.send(ClientToServer::Buzz {
                 game_code: app_ctx.game_code.read().clone().unwrap(),
@@ -29,10 +26,19 @@ pub fn PlayerView() -> Element {
         let locked = game.globally_locked || i_have_buzzed;
         let buzzer_text = if locked { "Locked" } else { "BUZZ!" };
         let code = app_ctx.game_code.read().clone().unwrap();
+        let my_name = if let Some(name) = app_ctx.player_name.read().as_ref() {
+            name.clone()
+        } else { 
+            "".to_string()
+        };
         rsx! {
             div {
                 class: "game-info-container",
                 p { class: "game-info", "Game Code: {code}" }
+            }
+            div {
+                class: "game-info-container",
+                p { class: "game-info", "Your name: {my_name}" }
             }
             div {
                 class: "buzzer-container",
@@ -43,6 +49,9 @@ pub fn PlayerView() -> Element {
                     "{buzzer_text}"
                 }
             }
+
+            PlayerBuzzOrderList {}
+            PlayerList {}
         }
     } else {
         rsx! {
@@ -52,6 +61,44 @@ pub fn PlayerView() -> Element {
                     class: "buzzer",
                     disabled: true,
                     "Loading..."
+                }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn PlayerList() -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let game_state_guard = app_ctx.game_state.read();
+    let players_data = if let Some(game) = game_state_guard.as_ref() {
+        // 1. Iterate over the ORDERED list of player IDs.
+        game.player_join_order
+            .iter()
+            .filter_map(|player_id| {
+                game.players.get(player_id).map(|player| (player_id, player))
+            })
+            .filter(|(_, player)| player.name() != HOST)
+            .map(|(player_id, player)| {
+                (
+                    player.name().to_string(),
+                    *game.scores.get(player_id).unwrap_or(&0),
+                )
+            })
+            .collect::<Vec<_>>()
+    } else {
+        vec![]
+    };
+
+    rsx! {
+        // Read the signal HERE. This makes the component reactive.
+        h3 { "Players" }
+        ul { class: "player-list",
+            // You can now safely iterate.
+            for (player_name, score) in players_data {
+                li {
+                    span { "{player_name}" }
+                    span { class: "score-display", ": {score}" }
                 }
             }
         }

@@ -103,9 +103,10 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     // Cleanup: remove player connection and from any game they were in
     // This `state` is now valid because we only moved the clone.
     state.connections.remove(&player_id);
-    for game in state.games.iter_mut() {
+    for mut game in state.games.iter_mut() {
         if game.players.remove(&player_id).is_some() {
             info!("Removed player {} from game {}", player_id, game.key());
+            game.player_join_order.retain(|&id| id != player_id);
             broadcast_state_update(&game, &state).await;
             break;
         }
@@ -127,6 +128,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                 buzzer_order: VecDeque::new(),
                 players,
                 scores: HashMap::new(),
+                player_join_order: vec![sender_id],
             };
 
             info!("Game created: {} by player {}", game_code, sender_id);
@@ -141,19 +143,31 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
         }
         ClientToServer::JoinGame {
             game_code,
-            player_name,
+            mut player_name,
         } => {
+            player_name = player_name.trim().to_string();
+
+            if player_name.is_empty() || player_name.len() > 12 {
+                let error_msg = ServerToClient::Error {
+                    message: "Player name must be between 1 and 12 characters.".to_string(),
+                };
+                // Send an error back to only the player who tried to join
+                send_to_player(sender_id, &error_msg, &state).await;
+                return; // Stop processing the invalid request
+            }
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 game.players.insert(
                     sender_id,
                     Actor::Player {
                         id: sender_id,
-                        name: player_name,
+                        name: player_name.clone(),
                     },
                 );
                 game.scores.insert(sender_id, 0);
+                game.player_join_order.push(sender_id);
                 let response = ServerToClient::GameJoined {
                     player_id: sender_id,
+                    player_name,
                     game_state: game.to_json(),
                 };
                 send_to_player(sender_id, &response, &state).await;
@@ -206,15 +220,15 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
             delta,
         } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
-                if game.host_id == player_id {
+                if game.host_id == sender_id {
                     let score = game.scores.entry(player_id).or_insert(0);
                     *score = (*score + delta).max(0); // Prevent negative scores
                     info!(
-                        "Updated score for player {} in game {}: {}",
-                        player_id, game_code, *score
+                        "Host {} updated score for player {} to {}",
+                        sender_id, player_id, *score
                     );
                     broadcast_state_update(&game, &state).await;
-                }
+        }
             }
         }
     }

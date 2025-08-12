@@ -7,7 +7,6 @@ use host::*;
 use log::{error, info};
 use player::PlayerView;
 use std::fmt;
-use std::str::FromStr;
 use uuid::Uuid;
 
 mod host;
@@ -20,9 +19,11 @@ struct AppContext {
     ws_tx: Signal<Option<SplitSink<WebSocket, Message>>>,
     game_state: Signal<Option<GameState>>,
     player_id: Signal<Option<Uuid>>,
+    player_name: Signal<Option<String>>,
     game_code: Signal<Option<usize>>,
     error_message: Signal<Option<String>>,
     locally_locked: Signal<bool>,
+    buzzer_sound: Signal<String>,
 }
 
 impl fmt::Debug for AppContext {
@@ -36,7 +37,6 @@ impl fmt::Debug for AppContext {
 }
 
 impl AppContext {
-    // Helper to send a message to the server
     fn send(&self, msg: ClientToServer) {
         let mut ws_tx_signal = self.ws_tx;
         spawn(async move {
@@ -46,7 +46,6 @@ impl AppContext {
             let sender = ws_tx_signal.write().take();
 
             if let Some(mut sender) = sender {
-                // 2. The sender was available. Send the message.
                 if sender.send(Message::Text(json_msg)).await.is_ok() {
                     // 3. If sending succeeded, put the sender back for the next message.
                     *ws_tx_signal.write() = Some(sender);
@@ -69,8 +68,6 @@ fn main() {
     launch(App);
 }
 
-// in main.rs
-
 #[component]
 fn App() -> Element {
     rsx! {
@@ -84,18 +81,22 @@ fn AppLayout() -> Element {
     let ws_tx = use_signal::<Option<SplitSink<WebSocket, Message>>>(|| None);
     let game_state = use_signal::<Option<GameState>>(|| None);
     let player_id = use_signal::<Option<Uuid>>(|| None);
+    let player_name = use_signal::<Option<String>>(|| None);
     let game_code = use_signal::<Option<usize>>(|| None);
     let error_message = use_signal::<Option<String>>(|| None);
     let locally_locked = use_signal::<bool>(|| false);
+    let buzzer_sound = use_signal(|| "../assets/ding-101492.mp3".to_string());
 
     // Provide the context to all child components
     let mut app_ctx = use_context_provider(|| AppContext {
         ws_tx,
         game_state,
         player_id,
+        player_name,
         game_code,
         error_message,
         locally_locked,
+        buzzer_sound,
     });
 
     let nav = navigator();
@@ -128,10 +129,12 @@ fn AppLayout() -> Element {
                             }
                             ServerToClient::GameJoined {
                                 player_id: id,
+                                player_name,
                                 game_state: state,
                             } => {
                                 info!("ServerToClient: game joined");
                                 *app_ctx.player_id.write() = Some(id);
+                                *app_ctx.player_name.write() = Some(player_name);
                                 *app_ctx.game_state.write() = Some(state.into());
                                 if let Some(code) = app_ctx.game_code.read().clone() {
                                     info!("Navigate to GameRoom");
@@ -180,7 +183,7 @@ enum Route {
 #[component]
 fn Home() -> Element {
     let mut app_ctx = use_context::<AppContext>();
-    let mut name = use_signal(String::new);
+    let mut player_name = use_signal(String::new);
     let mut join_code = use_signal(|| String::default());
 
     let on_create_game = move |_| {
@@ -188,16 +191,13 @@ fn Home() -> Element {
         app_ctx.send(ClientToServer::CreateGame);
     };
 
-    let on_join_game = move |_| {
-        if !name().is_empty() && !join_code().is_empty() {
-            info!("Send info to server");
-            let game_code = usize::from_str(&join_code()).unwrap();
+    let on_join_submit = move |_| {
+        if let Ok(code) = join_code.read().parse::<usize>() {
+            *app_ctx.game_code.write() = Some(code);
             app_ctx.send(ClientToServer::JoinGame {
-                game_code,
-                player_name: name(),
+                game_code: code,
+                player_name: player_name.read().clone(),
             });
-            info!("Write game code");
-            *app_ctx.game_code.write() = Some(game_code);
         }
     };
 
@@ -214,29 +214,37 @@ fn Home() -> Element {
         hr{}
 
         div {
-            h1 { "Join game" }
-
-            // Input for game code
-            h3 {"Game code"}
-            input {
-                placeholder: "Game code",
-                value: "{join_code}",
-                oninput: move |evt| join_code.set(evt.value())
-            }
-
-            // Input for player name
-            h3 {"Your name"}
-            input {
-                placeholder: "Player's name",
-                value: "{name}",
-                oninput: move |evt| name.set(evt.value())
-            }
-
-            // Wrap the button in its own div to ensure it's on a new line
-            div {
-                margin_top: "10px", // Optional: Adds some space above the button
+            class: "home-container",
+            h2 { "Join Game" }
+            // 1. Wrap your inputs and button in a form tag
+            form {
+                // 2. Attach your logic to the form's `onsubmit` event
+                onsubmit: on_join_submit,
+                div { class: "form-field",
+                    label { r#for: "game_code", "Game Code" }
+                    input {
+                        id: "game_code",
+                        name: "game_code",
+                        required: true,
+                        value: "{join_code}",
+                        oninput: move |evt| join_code.set(evt.value()),
+                    }
+                }
+                div { class: "form-field",
+                    label { r#for: "player_name", "Your Name" }
+                    input {
+                        id: "player_name",
+                        name: "player_name",
+                        required: true,
+                        maxlength: 16,
+                        value: "{player_name}",
+                        oninput: move |evt| player_name.set(evt.value()),
+                    }
+                }
+                // 3. Change the button to type="submit" and remove onclick
                 button {
-                    onclick: on_join_game,
+                    r#type: "submit",
+                    class: "control-button",
                     "Join Game"
                 }
             }
@@ -264,29 +272,6 @@ pub fn GameRoom(code: String) -> Element {
             } else {
                 PlayerView {}
             }
-            PlayerBuzzOrderList {}
-            PlayerList {}
-        }
-    }
-}
-
-#[component]
-pub fn PlayerList() -> Element {
-    let app_ctx = use_context::<AppContext>();
-
-    rsx! {
-        // Read the signal HERE. This makes the component reactive.
-        if let Some(game) = app_ctx.game_state.read().as_ref() {
-            h3 { "Players" }
-            ul { class: "player-list",
-                // You can now safely iterate.
-                for player in game.players.iter().filter(|p| p.name() != HOST) {
-                    li {
-                        span { "{player.name()}" }
-                        span { class: "score-display", " ({game.scores.get(&player.id()).unwrap_or(&0)})" }
-                    }
-                }
-            }
         }
     }
 }
@@ -297,21 +282,5 @@ fn PageNotFound(route: Vec<String>) -> Element {
         h1 { "Page not found" }
         p { "We are terribly sorry, but the page you requested doesn't exist." }
         pre { color: "red", "log:\nattemped to navigate to: {route:?}" }
-    }
-}
-
-#[component]
-pub fn PlayerBuzzOrderList() -> Element {
-    let app_ctx = use_context::<AppContext>();
-    let game = app_ctx.game_state.read().clone().unwrap();
-    rsx! {
-        h3 { "Buzzed" }
-        ol { class: "player-list",
-            for (_, player_name) in game.buzzer_order.iter() {
-                li {
-                    "{player_name}"
-                }
-            }
-        }
     }
 }
