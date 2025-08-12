@@ -8,6 +8,7 @@ use log::{error, info};
 use player::PlayerView;
 use std::fmt;
 use uuid::Uuid;
+use web_sys::HtmlAudioElement;
 
 mod host;
 mod player;
@@ -24,6 +25,7 @@ struct AppContext {
     error_message: Signal<Option<String>>,
     locally_locked: Signal<bool>,
     buzzer_sound: Signal<String>,
+    is_host: Signal<bool>,
 }
 
 impl fmt::Debug for AppContext {
@@ -86,6 +88,7 @@ fn AppLayout() -> Element {
     let error_message = use_signal::<Option<String>>(|| None);
     let locally_locked = use_signal::<bool>(|| false);
     let buzzer_sound = use_signal(|| "../assets/ding-101492.mp3".to_string());
+    let is_host = use_signal(|| false);
 
     // Provide the context to all child components
     let mut app_ctx = use_context_provider(|| AppContext {
@@ -97,6 +100,7 @@ fn AppLayout() -> Element {
         error_message,
         locally_locked,
         buzzer_sound,
+        is_host,
     });
 
     let nav = navigator();
@@ -147,6 +151,25 @@ fn AppLayout() -> Element {
                                     *app_ctx.locally_locked.write() = state.globally_locked;
                                 }
                                 *app_ctx.game_state.write() = Some(state);
+                            }
+                            // --- Add this new match arm ---
+                            ServerToClient::PlayerBuzzed {
+                                player_id,
+                                player_name,
+                            } => {
+                                // Check the signal to see if this client is the host
+                                if *app_ctx.is_host.read() {
+                                    log::info!(
+                                        "Player '{}' buzzed! Playing sound for host.",
+                                        player_name
+                                    );
+
+                                    // Get the sound selected in the settings menu
+                                    let sound_src = app_ctx.buzzer_sound.read().clone();
+                                    if let Ok(audio) = HtmlAudioElement::new_with_src(&sound_src) {
+                                        let _ = audio.play();
+                                    }
+                                }
                             }
                             ServerToClient::Error { message } => {
                                 *app_ctx.error_message.write() = Some(message);
@@ -254,7 +277,7 @@ fn Home() -> Element {
 
 #[component]
 pub fn GameRoom(code: String) -> Element {
-    let app_ctx = use_context::<AppContext>();
+    let mut app_ctx = use_context::<AppContext>();
     let my_id = app_ctx.player_id.read();
     let nav = navigator();
     info!("Game state: {:?}", &app_ctx.game_state);
@@ -263,6 +286,7 @@ pub fn GameRoom(code: String) -> Element {
     }
     let host_id = app_ctx.game_state.read().as_ref().unwrap().host_id;
     let is_host = *my_id == Some(host_id);
+    app_ctx.is_host.set(is_host);
 
     rsx! {
         div {

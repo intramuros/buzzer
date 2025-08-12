@@ -145,6 +145,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
             game_code,
             mut player_name,
         } => {
+            // Trim whitespace from the name
             player_name = player_name.trim().to_string();
 
             if player_name.is_empty() || player_name.len() > 12 {
@@ -191,7 +192,14 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                         return;
                     };
                     info!("Player {} buzzed in game {}", player_name, game_code);
-                    game.buzzer_order.push_back((player_id, player_name));
+                    game.buzzer_order
+                        .push_back((player_id, player_name.clone()));
+                    let buzz_msg = ServerToClient::PlayerBuzzed {
+                        player_id,
+                        player_name,
+                    };
+                    // Use your existing `send_to_player` helper to target the host
+                    send_to_player(game.host_id, &buzz_msg, &state).await;
                     broadcast_state_update(&game, &state).await;
                 }
             }
@@ -228,7 +236,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                         sender_id, player_id, *score
                     );
                     broadcast_state_update(&game, &state).await;
-        }
+                }
             }
         }
     }

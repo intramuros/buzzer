@@ -14,7 +14,7 @@ wasm-bindgen-futures = "0.4"
 futures-util = { version = "0.3", features = ["sink"] }
 im-rc = "15"
 tokio = { version = "1.46.1", features = ["time"] }
-web-sys = { version = "0.3", features = ["Clipboard", "Navigator"] }
+web-sys = { version = "0.3", features = ["Clipboard", "Navigator", "HtmlAudioElement"] }
 
 # Required for WebSockets in WASM
 gloo-net = { version = "0.5", features = ["websocket"] }

@@ -19,10 +19,12 @@ pub fn HostView() -> Element {
     let score_delta = use_signal(|| 1_i32);
     let mut show_settings = use_signal(|| false);
 
-
     // --- Provide the new, scoped HostContext ---
     // Any component rendered as a child of HostView can now access this.
-    use_context_provider(|| HostContext { copied, score_delta });
+    use_context_provider(|| HostContext {
+        copied,
+        score_delta,
+    });
 
     // Create a new signal to hold the dynamic score delta, defaulting to 1.
     let mut score_delta = use_signal(|| 10_i32);
@@ -56,7 +58,9 @@ pub fn HostView() -> Element {
         game.player_join_order
             .iter()
             .filter_map(|player_id| {
-                game.players.get(player_id).map(|player| (player_id, player))
+                game.players
+                    .get(player_id)
+                    .map(|player| (player_id, player))
             })
             .filter(|(_, player)| player.name() != HOST)
             .map(|(player_id, player)| {
@@ -93,7 +97,7 @@ pub fn HostView() -> Element {
                         "aria-label": "Open settings", // Good for accessibility
                         class: "control-button settings-button",
                         onclick: move |_| show_settings.set(true),
-                        
+
                         // Replace the "Settings" text with an SVG icon
                         svg {
                             xmlns: "http://www.w3.org/2000/svg",
@@ -260,7 +264,7 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
                     value: "{host_ctx.score_delta}",
                     oninput: move |evt| {
                         if let Ok(val) = evt.value().parse::<i32>() {
-                            host_ctx.score_delta.set(val.max(1));
+                            host_ctx.score_delta.set(val.max(10));
                         }
                     }
                 }
@@ -284,7 +288,7 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
                     }
                 }
             }
-            
+
             // --- Close Button ---
             div {
                 class: "settings-footer",

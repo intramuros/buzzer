@@ -126,4 +126,8 @@ pub enum ServerToClient {
     Error {
         message: String,
     },
+    PlayerBuzzed {
+        player_id: Uuid,
+        player_name: String,
+    },
 }
