@@ -33,23 +33,25 @@ pub fn PlayerView() -> Element {
         };
         rsx! {
             div {
-                class: "game-info-container",
-                p { class: "game-info", "Game Code: {code}" }
-            }
-            div {
-                class: "game-info-container",
-                p { class: "game-info", "Your name: {my_name}" }
-            }
-            div {
-                class: "buzzer-container",
-                button {
-                    class: "buzzer",
-                    disabled: locked,
-                    onclick: on_buzz,
-                    "{buzzer_text}"
+                class: "player-view-container",
+                div {
+                    class: "game-info-container",
+                    p { class: "game-info", "Game Code: {code}" }
+                }
+                div {
+                    class: "game-info-container",
+                    p { class: "game-info", "Your name: {my_name}" }
+                }
+                div {
+                    class: "buzzer-container",
+                    button {
+                        class: "buzzer",
+                        disabled: locked,
+                        onclick: on_buzz,
+                        "{buzzer_text}"
+                    }
                 }
             }
-
             PlayerBuzzOrderList {}
             PlayerList {}
         }

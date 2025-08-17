@@ -74,92 +74,104 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
         .unwrap_or_default();
 
     rsx! {
-        if let Some(game) = app_ctx.game_state.read().as_ref() {
-            h2 { class: "host-controls-title", "Host Controls" }
-            div {
-                class: "game-info-container",
-                p { class: "game-info", "Game Code: {game_code}" }
-                CopyButton {}
-            }
-            div {
-                class: "host-controls",
-                if game.globally_locked {
-                    button { class: "control-button", onclick: on_unlock, "Unlock Buzzers" }
-                } else {
-                    button { class: "control-button", onclick: on_lock, "Lock Buzzer" }
+        div {
+            class: "host-view-container",
+            // --- Left Column ---
+            if file_url.read().is_some() {
+                div { class: "file-viewer-column",
+                    FileViewer { file_url }
                 }
-                button { class: "control-button", onclick: on_clear, "Clear Buzzer" }
-                button {
-                    "aria-label": "Open settings",
-                    class: "control-button settings-button",
-                    onclick: move |_| show_settings.set(true),
-                    svg {
-                        xmlns: "http://www.w3.org/2000/svg",
-                        view_box: "0 0 24 24",
-                        fill: "currentColor",
-                        path {
-                            d: "M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 \
-                                l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81\
-                                C14.33,2.59,14.12,2.4,13.86,2.4h-3.72c-0.26,0-0.47,0.19-0.54,0.41L9.2,5.27\
-                                C8.61,5.51,8.08,5.83,7.58,6.21L5.19,5.25C4.97,5.18,4.72,5.25,4.6,5.47L2.68,8.79
-                                c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.78,11.36,4.76,11.68,4.76,12s0.02,0.64,0.07,0.94l-2.03,1.58
-                                c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94
-                                l0.4,2.46c0.07,0.22,0.28,0.41,0.54,0.41h3.72c0.26,0,0.47-0.19,0.54-0.41l0.4-2.46c0.59-0.24,1.12-0.56,1.62-0.94
-                                l2.39,0.96c0.22,0.07,0.47,0,0.59-0.22l1.92-3.32c0.11-0.20,0.06-0.47-0.12-0.61L19.14,12.94z
-                                M12,15.6 c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
-                        }
+            }
+            // --- Right Column ---
+            div { class: "host-controls-column",
+                if let Some(game) = app_ctx.game_state.read().as_ref() {
+                    h2 { class: "host-controls-title", "Host Controls" }
+                    div {
+                        class: "game-info-container",
+                        p { class: "game-info", "Game Code: {game_code}" }
+                        CopyButton {}
                     }
-                }
-                FileUploader { file_url }
-            }
-            if show_settings() {
-                SettingsMenu { is_open: show_settings }
-            }
-            PlayerBuzzOrderList {}
-            div {
-                class: "player-list-container",
-                h3 { "Players & Scores" }
-                ul {
-                    class: "player-list",
-                    for (player_id, player_name, score) in players_data {
-                        li {
-                            class: "player-list-item",
-                            span { class: "player-name", "{player_name}" }
-                            span { class: "score-display", ": {score}" }
-                            div {
-                                class: "score-buttons-container",
-                                button {
-                                    class: "score-button",
-                                    onclick: move |_| {
-                                        if let Some(code) = *app_ctx.game_code.read() {
-                                            app_ctx.send(ClientToServer::UpdateScore {
-                                                game_code: code,
-                                                player_id,
-                                                delta: *score_delta.read(),
-                                            });
-                                        }
-                                    },
-                                    "+"
+                    div {
+                        class: "host-controls",
+                        if game.globally_locked {
+                            button { class: "control-button", onclick: on_unlock, "Unlock Buzzers" }
+                        } else {
+                            button { class: "control-button", onclick: on_lock, "Lock Buzzer" }
+                        }
+                        button { class: "control-button", onclick: on_clear, "Clear Buzzer" }
+                        button {
+                            "aria-label": "Open settings",
+                            class: "control-button settings-button",
+                            onclick: move |_| show_settings.set(true),
+                            svg {
+                                xmlns: "http://www.w3.org/2000/svg",
+                                view_box: "0 0 24 24",
+                                fill: "currentColor",
+                                path {
+                                    d: "M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 \
+                                        l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81\
+                                        C14.33,2.59,14.12,2.4,13.86,2.4h-3.72c-0.26,0-0.47,0.19-0.54,0.41L9.2,5.27\
+                                        C8.61,5.51,8.08,5.83,7.58,6.21L5.19,5.25C4.97,5.18,4.72,5.25,4.6,5.47L2.68,8.79
+                                        c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.78,11.36,4.76,11.68,4.76,12s0.02,0.64,0.07,0.94l-2.03,1.58
+                                        c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94
+                                        l0.4,2.46c0.07,0.22,0.28,0.41,0.54,0.41h3.72c0.26,0,0.47-0.19,0.54-0.41l0.4-2.46c0.59-0.24,1.12-0.56,1.62-0.94
+                                        l2.39,0.96c0.22,0.07,0.47,0,0.59-0.22l1.92-3.32c0.11-0.20,0.06-0.47-0.12-0.61L19.14,12.94z
+                                        M12,15.6 c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
                                 }
-                                button {
-                                    class: "score-button",
-                                    onclick: move |_| {
-                                        if let Some(code) = *app_ctx.game_code.read() {
-                                            app_ctx.send(ClientToServer::UpdateScore {
-                                                game_code: code,
-                                                player_id,
-                                                delta: -(*score_delta.read()),
-                                            });
+                            }
+                        }
+                        FileUploader { file_url }
+                    }
+                    if show_settings() {
+                        SettingsMenu { is_open: show_settings }
+                    }
+                    PlayerBuzzOrderList {}
+                    div {
+                        class: "player-list-container",
+                        h3 { "Players & Scores" }
+                        ul {
+                            class: "player-list",
+                            for (player_id, player_name, score) in players_data {
+                                li {
+                                    class: "player-list-item",
+                                    span { class: "player-name", "{player_name}" }
+                                    span { class: "score-display", ": {score}" }
+                                    div {
+                                        class: "score-buttons-container",
+                                        button {
+                                            class: "score-button",
+                                            onclick: move |_| {
+                                                if let Some(code) = *app_ctx.game_code.read() {
+                                                    app_ctx.send(ClientToServer::UpdateScore {
+                                                        game_code: code,
+                                                        player_id,
+                                                        delta: *score_delta.read(),
+                                                    });
+                                                }
+                                            },
+                                            "+"
                                         }
-                                    },
-                                    "-"
+                                        button {
+                                            class: "score-button",
+                                            onclick: move |_| {
+                                                if let Some(code) = *app_ctx.game_code.read() {
+                                                    app_ctx.send(ClientToServer::UpdateScore {
+                                                        game_code: code,
+                                                        player_id,
+                                                        delta: -(*score_delta.read()),
+                                                    });
+                                                }
+                                            },
+                                            "-"
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
-    }
+        }
     }
 }
 

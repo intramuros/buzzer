@@ -301,22 +301,7 @@ pub fn GameRoom(code: String) -> Element {
 
     rsx! {
         if is_host {
-            // --- The two-column layout is now defined here ---
-            div {
-                class: "host-view-container",
-                // --- Left Column ---
-                div {
-                    class: "file-viewer-column",
-                    // Render FileViewer INSIDE the right column.
-                    FileViewer { file_url }
-                }
-                // --- Right Column ---
-                div {
-                    class: "host-controls-column",
-                    // Render HostView INSIDE the left column, passing the signal down.
-                    HostView { file_url }
-                }
-            }
+            HostView { file_url }
         } else {
             PlayerView {}
         }
