@@ -305,13 +305,11 @@ pub fn GameRoom(code: String) -> Element {
             div {
                 class: "host-view-container",
                 // --- Left Column ---
-                // if file_url.read().is_some() {
                 div {
                     class: "file-viewer-column",
                     // Render FileViewer INSIDE the right column.
                     FileViewer { file_url }
                 }
-                // }
                 // --- Right Column ---
                 div {
                     class: "host-controls-column",
