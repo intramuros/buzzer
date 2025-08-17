@@ -7,6 +7,7 @@ use axum::{
     routing::get,
     Router,
 };
+use tower_http::services::ServeDir;
 use common::*;
 use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
@@ -45,6 +46,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/ws", get(ws_handler))
+        .fallback_service(ServeDir::new("./dist"))
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()

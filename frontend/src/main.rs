@@ -185,7 +185,10 @@ fn AppLayout() -> Element {
 
     rsx! {
         document::Stylesheet { href: CSS }
-        Outlet::<Route> {}
+        div {
+            class: "app-container",
+            Outlet::<Route> {}
+        }
     }
 }
 
@@ -225,50 +228,57 @@ fn Home() -> Element {
     };
 
     rsx! {
-        h1 { "Quiz Button" }
-        if let Some(err) = (app_ctx.error_message)() {
-            p { class: "error", "{err}" }
-        }
-        div {
-            h2 { "Create a New Game" }
-            button { onclick: on_create_game, "Create Game" }
-        }
-
-        hr{}
-
-        div {
-            class: "home-container",
-            h2 { "Join Game" }
-            // 1. Wrap your inputs and button in a form tag
-            form {
-                // 2. Attach your logic to the form's `onsubmit` event
-                onsubmit: on_join_submit,
-                div { class: "form-field",
-                    label { r#for: "game_code", "Game Code" }
-                    input {
-                        id: "game_code",
-                        name: "game_code",
-                        required: true,
-                        value: "{join_code}",
-                        oninput: move |evt| join_code.set(evt.value()),
-                    }
-                }
-                div { class: "form-field",
-                    label { r#for: "player_name", "Your Name" }
-                    input {
-                        id: "player_name",
-                        name: "player_name",
-                        required: true,
-                        maxlength: 16,
-                        value: "{player_name}",
-                        oninput: move |evt| player_name.set(evt.value()),
-                    }
-                }
-                // 3. Change the button to type="submit" and remove onclick
+         div {
+            class: "home-page",
+            h1 { "Quiz Button" }
+            if let Some(err) = (app_ctx.error_message)() {
+                p { class: "error", "{err}" }
+            }
+            div {
+                class: "home-section",
+                h2 { "Create a New Game" }
                 button {
-                    r#type: "submit",
                     class: "control-button",
-                    "Join Game"
+                    onclick: on_create_game,
+                    "Create Game"
+                }
+            }
+            hr{}
+
+            div {
+                class: "home-section",
+                h2 { "Join Game" }
+                // 1. Wrap your inputs and button in a form tag
+                form {
+                    // 2. Attach your logic to the form's `onsubmit` event
+                    onsubmit: on_join_submit,
+                    div { class: "form-field",
+                        label { r#for: "game_code", "Game Code" }
+                        input {
+                            id: "game_code",
+                            name: "game_code",
+                            required: true,
+                            value: "{join_code}",
+                            oninput: move |evt| join_code.set(evt.value()),
+                        }
+                    }
+                    div { class: "form-field",
+                        label { r#for: "player_name", "Your Name" }
+                        input {
+                            id: "player_name",
+                            name: "player_name",
+                            required: true,
+                            maxlength: 16,
+                            value: "{player_name}",
+                            oninput: move |evt| player_name.set(evt.value()),
+                        }
+                    }
+                    // 3. Change the button to type="submit" and remove onclick
+                    button {
+                        r#type: "submit",
+                        class: "control-button",
+                        "Join Game"
+                    }
                 }
             }
         }
@@ -287,15 +297,30 @@ pub fn GameRoom(code: String) -> Element {
     let host_id = app_ctx.game_state.read().as_ref().unwrap().host_id;
     let is_host = *my_id == Some(host_id);
     app_ctx.is_host.set(is_host);
+    let file_url = use_signal::<Option<String>>(|| None);
 
     rsx! {
-        div {
-            class: "game-room-container",
-            if is_host {
-                HostView {}
-            } else {
-                PlayerView {}
+        if is_host {
+            // --- The two-column layout is now defined here ---
+            div {
+                class: "host-view-container",
+                // --- Left Column ---
+                // if file_url.read().is_some() {
+                div {
+                    class: "file-viewer-column",
+                    // Render FileViewer INSIDE the right column.
+                    FileViewer { file_url }
+                }
+                // }
+                // --- Right Column ---
+                div {
+                    class: "host-controls-column",
+                    // Render HostView INSIDE the left column, passing the signal down.
+                    HostView { file_url }
+                }
             }
+        } else {
+            PlayerView {}
         }
     }
 }

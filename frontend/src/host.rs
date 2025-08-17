@@ -11,36 +11,32 @@ struct HostContext {
 }
 
 #[component]
-pub fn HostView() -> Element {
+pub fn HostView(file_url: Signal<Option<String>>) -> Element {
     let app_ctx = use_context::<AppContext>();
 
     // --- Create the Host-specific state ---
     let copied = use_signal(|| false);
-    let score_delta = use_signal(|| 1_i32);
+    let score_delta = use_signal(|| 10_i32);
     let mut show_settings = use_signal(|| false);
 
     // --- Provide the new, scoped HostContext ---
-    // Any component rendered as a child of HostView can now access this.
     use_context_provider(|| HostContext {
         copied,
         score_delta,
     });
 
-    // Create a new signal to hold the dynamic score delta, defaulting to 1.
-    let mut score_delta = use_signal(|| 10_i32);
-
     let on_lock = move |_| {
         if let Some(code) = *app_ctx.game_code.read() {
             app_ctx.send(ClientToServer::Lock { game_code: code });
         } else {
-            log::error!("Cannot clear: game_code is not set.");
+            log::error!("Cannot lock: game_code is not set.");
         }
     };
     let on_unlock = move |_| {
         if let Some(code) = *app_ctx.game_code.read() {
             app_ctx.send(ClientToServer::Unlock { game_code: code });
         } else {
-            log::error!("Cannot clear: game_code is not set.");
+            log::error!("Cannot unlock: game_code is not set.");
         }
     };
     let on_clear = move |_| {
@@ -51,10 +47,9 @@ pub fn HostView() -> Element {
         }
     };
 
-    // --- NEW: Prepare data *before* rendering ---
+    // --- Prepare data *before* rendering ---
     let game_state_guard = app_ctx.game_state.read();
     let players_data = if let Some(game) = game_state_guard.as_ref() {
-        // 1. Iterate over the ORDERED list of player IDs.
         game.player_join_order
             .iter()
             .filter_map(|player_id| {
@@ -77,58 +72,60 @@ pub fn HostView() -> Element {
     let game_code = (*app_ctx.game_code.read())
         .map(|c| c.to_string())
         .unwrap_or_default();
-    rsx! {
-            if let Some(game) = app_ctx.game_state.read().as_ref() {
-                h2 { class: "host-controls-title", "Host Controls" }
-                div {
-                    class: "game-info-container",
-                    p { class: "game-info", "Game Code: {game_code}" }
-                    CopyButton {}
-                }
-                div {
-                    class: "host-controls",
-                    if game.globally_locked {
-                        button { class: "control-button", onclick: on_unlock, "Unlock Buzzers" }
-                    } else {
-                        button { class: "control-button", onclick: on_lock, "Lock Buzzer" }
-                    }
-                    button { class: "control-button", onclick: on_clear, "Clear Buzzer" }
-                    button {
-                        "aria-label": "Open settings", // Good for accessibility
-                        class: "control-button settings-button",
-                        onclick: move |_| show_settings.set(true),
 
-                        // Replace the "Settings" text with an SVG icon
-                        svg {
-                            xmlns: "http://www.w3.org/2000/svg",
-                            view_box: "0 0 24 24",
-                            fill: "currentColor", // The icon color will be inherited from the CSS `color` property
-                            path {
-                                d: "M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81 C14.33,2.59,14.12,2.4,13.86,2.4h-3.72c-0.26,0-0.47,0.19-0.54,0.41L9.2,5.27 C8.61,5.51,8.08,5.83,7.58,6.21L5.19,5.25C4.97,5.18,4.72,5.25,4.6,5.47L2.68,8.79 c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.78,11.36,4.76,11.68,4.76,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94 l0.4,2.46c0.07,0.22,0.28,0.41,0.54,0.41h3.72c0.26,0,0.47-0.19,0.54-0.41l0.4-2.46c0.59-0.24,1.12-0.56,1.62-0.94 l2.39,0.96c0.22,0.07,0.47,0,0.59-0.22l1.92-3.32c0.11-0.2,0.06-0.47-0.12-0.61L19.14,12.94z M12,15.6 c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
-                            }
+    rsx! {
+        if let Some(game) = app_ctx.game_state.read().as_ref() {
+            h2 { class: "host-controls-title", "Host Controls" }
+            div {
+                class: "game-info-container",
+                p { class: "game-info", "Game Code: {game_code}" }
+                CopyButton {}
+            }
+            div {
+                class: "host-controls",
+                if game.globally_locked {
+                    button { class: "control-button", onclick: on_unlock, "Unlock Buzzers" }
+                } else {
+                    button { class: "control-button", onclick: on_lock, "Lock Buzzer" }
+                }
+                button { class: "control-button", onclick: on_clear, "Clear Buzzer" }
+                button {
+                    "aria-label": "Open settings",
+                    class: "control-button settings-button",
+                    onclick: move |_| show_settings.set(true),
+                    svg {
+                        xmlns: "http://www.w3.org/2000/svg",
+                        view_box: "0 0 24 24",
+                        fill: "currentColor",
+                        path {
+                            d: "M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 \
+                                l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81\
+                                C14.33,2.59,14.12,2.4,13.86,2.4h-3.72c-0.26,0-0.47,0.19-0.54,0.41L9.2,5.27\
+                                C8.61,5.51,8.08,5.83,7.58,6.21L5.19,5.25C4.97,5.18,4.72,5.25,4.6,5.47L2.68,8.79
+                                c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.78,11.36,4.76,11.68,4.76,12s0.02,0.64,0.07,0.94l-2.03,1.58
+                                c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94
+                                l0.4,2.46c0.07,0.22,0.28,0.41,0.54,0.41h3.72c0.26,0,0.47-0.19,0.54-0.41l0.4-2.46c0.59-0.24,1.12-0.56,1.62-0.94
+                                l2.39,0.96c0.22,0.07,0.47,0,0.59-0.22l1.92-3.32c0.11-0.20,0.06-0.47-0.12-0.61L19.14,12.94z
+                                M12,15.6 c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
                         }
                     }
                 }
+                FileUploader { file_url }
+            }
             if show_settings() {
                 SettingsMenu { is_open: show_settings }
             }
             PlayerBuzzOrderList {}
             div {
-                class: "player-list-container", // A new container for styling
+                class: "player-list-container",
                 h3 { "Players & Scores" }
                 ul {
-                    class: "player-list", // Reuse the existing class
-
-                    // Iterate over your pre-prepared, owned data
+                    class: "player-list",
                     for (player_id, player_name, score) in players_data {
-                        // Each list item now contains the name, score, and controls.
                         li {
-                            class: "player-list-item", // A new class for each row
-
+                            class: "player-list-item",
                             span { class: "player-name", "{player_name}" }
-                            span { class: "score-display", ":  {score}" }
-
-                            // Container to group the buttons
+                            span { class: "score-display", ": {score}" }
                             div {
                                 class: "score-buttons-container",
                                 button {
@@ -162,7 +159,7 @@ pub fn HostView() -> Element {
                     }
                 }
             }
-        }
+    }
     }
 }
 
@@ -189,9 +186,8 @@ pub fn PlayerBuzzOrderList() -> Element {
 
 #[component]
 fn CopyButton() -> Element {
-    // This component consumes BOTH contexts!
-    let app_ctx = use_context::<AppContext>(); // Global
-    let mut host_ctx = use_context::<HostContext>(); // Host-specific
+    let app_ctx = use_context::<AppContext>();
+    let mut host_ctx = use_context::<HostContext>();
 
     let copy_to_clipboard = move |_| {
         if let Some(code) = *app_ctx.game_code.read() {
@@ -206,14 +202,9 @@ fn CopyButton() -> Element {
             } else {
                 info!("Window not available");
             }
-            spawn(async move {
-                gloo_timers::future::TimeoutFuture::new(2000).await;
-                host_ctx.copied.set(false);
-            });
         }
     };
 
-    // Read the `copied` signal from the host context for display
     let button_text = if *host_ctx.copied.read() {
         "Copied!"
     } else {
@@ -235,25 +226,20 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
     let mut app_ctx = use_context::<AppContext>();
     let mut host_ctx = use_context::<HostContext>();
 
-    // Define sound options. Assumes you have these files in your `/assets/sounds/` directory.
     let sound_options = vec![
-        ("Default Buzzer", "sounds/default.mp3"),
+        ("Default Buzzer", "../assets/ding-101492.mp3"),
         ("Ding", "sounds/ding.mp3"),
         ("Boop", "sounds/boop.mp3"),
     ];
 
     rsx! {
-        // Modal backdrop (clicking it closes the menu)
         div {
             class: "settings-backdrop",
             onclick: move |_| is_open.set(false),
         }
-        // The menu panel
         div {
             class: "settings-menu",
             h2 { "Settings" }
-
-            // --- Score Delta Control (Moved here) ---
             div {
                 class: "setting-item",
                 label { r#for: "delta-input", "Score Increment:" }
@@ -264,13 +250,11 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
                     value: "{host_ctx.score_delta}",
                     oninput: move |evt| {
                         if let Ok(val) = evt.value().parse::<i32>() {
-                            host_ctx.score_delta.set(val.max(10));
+                            host_ctx.score_delta.set(val.max(1));
                         }
                     }
                 }
             }
-
-            // --- Buzzer Sound Selector ---
             div {
                 class: "setting-item",
                 label { r#for: "sound-select", "Buzzer Sound:" }
@@ -288,8 +272,6 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
                     }
                 }
             }
-
-            // --- Close Button ---
             div {
                 class: "settings-footer",
                 button {
@@ -297,6 +279,88 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
                     onclick: move |_| is_open.set(false),
                     "Close"
                 }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn FileViewer(file_url: Signal<Option<String>>) -> Element {
+    rsx! {
+        div {
+            class: "pdf-viewer-container",
+            if let Some(url) = file_url() {
+                iframe {
+                    src: "{url}",
+                    class: "pdf-iframe",
+                    title: "PDF Viewer",
+                    style: "width: 100%; height: 100%; border: none;"
+                }
+            } else {
+                div {
+                    class: "pdf-placeholder",
+                    "No PDF uploaded. Select a PDF file to view."
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn FileUploader(file_url: Signal<Option<String>>) -> Element {
+    let mut error_message = use_signal(|| None::<String>);
+
+    let on_file_change = move |event: Event<FormData>| {
+        spawn(async move {
+            if let Some(file_engine) = event.files() {
+                let files = file_engine.files();
+                if let Some(file_name) = files.first() {
+                    if let Some(bytes) = file_engine.read_file(file_name).await {
+                        let uint8_array =
+                            web_sys::js_sys::Uint8Array::new_with_length(bytes.len() as u32);
+                        for (i, &byte) in bytes.iter().enumerate() {
+                            uint8_array.set_index(i as u32, byte);
+                        }
+                        let array = web_sys::js_sys::Array::new();
+                        array.push(&uint8_array.buffer());
+                        let init = web_sys::BlobPropertyBag::new();
+                        init.set_type("application/pdf");
+                        if let Ok(blob) = web_sys::Blob::new_with_buffer_source_sequence_and_options(
+                            &array, &init,
+                        ) {
+                            if let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) {
+                                file_url.set(Some(url));
+                                error_message.set(None);
+                            } else {
+                                error_message.set(Some("Failed to create URL".to_string()));
+                            }
+                        } else {
+                            error_message.set(Some("Failed to create Blob".to_string()));
+                        }
+                    } else {
+                        error_message.set(Some("Failed to read file".to_string()));
+                    }
+                } else {
+                    error_message.set(Some("No file selected.".to_string()));
+                }
+            } else {
+                error_message.set(Some("No files provided.".to_string()));
+            }
+        });
+    };
+
+    rsx! {
+        div {
+            class: "file-uploader-container",
+            input {
+                r#type: "file",
+                accept: ".pdf",
+                id: "pdf-upload",
+                onchange: on_file_change,
+                class: "file-input"
+            }
+            if let Some(err) = error_message() {
+                p { class: "error-message", "{err}" }
             }
         }
     }

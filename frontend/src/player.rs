@@ -28,7 +28,7 @@ pub fn PlayerView() -> Element {
         let code = app_ctx.game_code.read().clone().unwrap();
         let my_name = if let Some(name) = app_ctx.player_name.read().as_ref() {
             name.clone()
-        } else { 
+        } else {
             "".to_string()
         };
         rsx! {
@@ -76,7 +76,9 @@ pub fn PlayerList() -> Element {
         game.player_join_order
             .iter()
             .filter_map(|player_id| {
-                game.players.get(player_id).map(|player| (player_id, player))
+                game.players
+                    .get(player_id)
+                    .map(|player| (player_id, player))
             })
             .filter(|(_, player)| player.name() != HOST)
             .map(|(player_id, player)| {
