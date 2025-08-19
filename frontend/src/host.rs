@@ -85,7 +85,6 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
             // --- Right Column ---
             div { class: "host-controls-column",
                 if let Some(game) = app_ctx.game_state.read().as_ref() {
-                    h2 { class: "host-controls-title", "Host Controls" }
                     div {
                         class: "game-info-container",
                         p { class: "game-info", "Game Code: {game_code}" }
@@ -94,9 +93,9 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                     div {
                         class: "host-controls",
                         if game.globally_locked {
-                            button { class: "control-button", onclick: on_unlock, "Unlock Buzzers" }
+                            button { class: "unlock-button", onclick: on_unlock, "Unlock Buzzers" }
                         } else {
-                            button { class: "control-button", onclick: on_lock, "Lock Buzzer" }
+                            button { class: "lock-button", onclick: on_lock, "Lock Buzzers" }
                         }
                         button { class: "control-button", onclick: on_clear, "Clear Buzzer" }
                         button {
@@ -120,10 +119,11 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                                 }
                             }
                         }
-                        FileUploader { file_url }
+                        // MOVED: The FileUploader component is no longer here
                     }
                     if show_settings() {
-                        SettingsMenu { is_open: show_settings }
+                        // MODIFIED: Pass the file_url signal to the settings menu
+                        SettingsMenu { is_open: show_settings, file_url }
                     }
                     PlayerBuzzOrderList {}
                     div {
@@ -135,7 +135,7 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                                 li {
                                     class: "player-list-item",
                                     span { class: "player-name", "{player_name}" }
-                                    span { class: "score-display", ": {score}" }
+                                    span { class: "score-display", "{score}" }
                                     div {
                                         class: "score-buttons-container",
                                         button {
@@ -186,10 +186,12 @@ pub fn PlayerBuzzOrderList() -> Element {
     };
     rsx! {
         h3 { "Buzzed" }
-        ol { class: "player-list",
-            for (_, player_name) in players_data {
-                li {
-                    "{player_name}"
+        if !players_data.is_empty() {
+            ol { class: "player-list buzzed-order-list",
+                for (_, player_name) in players_data {
+                    li {
+                        "{player_name}"
+                    }
                 }
             }
         }
@@ -233,8 +235,9 @@ fn CopyButton() -> Element {
     }
 }
 
+// MODIFIED: Component now accepts the file_url signal
 #[component]
-fn SettingsMenu(is_open: Signal<bool>) -> Element {
+fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Element {
     let mut app_ctx = use_context::<AppContext>();
     let mut host_ctx = use_context::<HostContext>();
 
@@ -284,6 +287,12 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
                     }
                 }
             }
+            // ADDED: File uploader is now a setting
+            div {
+                class: "setting-item",
+                label { r#for: "pdf-upload", "Upload PDF:" }
+                FileUploader { file_url }
+            }
             div {
                 class: "settings-footer",
                 button {
@@ -296,17 +305,24 @@ fn SettingsMenu(is_open: Signal<bool>) -> Element {
     }
 }
 
+// MODIFIED: Added a close button to the viewer
 #[component]
 pub fn FileViewer(file_url: Signal<Option<String>>) -> Element {
     rsx! {
         div {
             class: "pdf-viewer-container",
             if let Some(url) = file_url() {
+                // ADDED: This button will set the file_url to None, effectively closing the viewer
+                button {
+                    class: "pdf-close-button",
+                    "aria-label": "Close PDF Viewer",
+                    onclick: move |_| file_url.set(None),
+                    "×" // A nice 'times' character for the X
+                }
                 iframe {
                     src: "{url}",
                     class: "pdf-iframe",
                     title: "PDF Viewer",
-                    style: "width: 100%; height: 100%; border: none;"
                 }
             } else {
                 div {

@@ -1,3 +1,4 @@
+
 /* Global Variables */
 :root {
     --primary-bg: #1e1e1e;
@@ -15,11 +16,20 @@
     --spacing-md: 16px;
     --spacing-lg: 24px;
     --font-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+    /* Responsive Font Sizes */
+    --font-size-small: clamp(0.6rem, 0.75rem + 0.5vw, 1.1rem);
+    --font-size-base: clamp(0.875rem, 0.75rem + 0.5vw, 1.1rem);
+    --font-size-lg: clamp(1rem, 0.8rem + 1vw, 1.5rem);
+    --font-size-xl: clamp(1.25rem, 1rem + 1.5vw, 2rem);
+    --font-size-buzzer: clamp(1rem, 1rem + 8vw, 3rem);
 }
 
 /* Base Styles */
 html {
     box-sizing: border-box;
+    /* Set the base font size to be responsive */
+    font-size: var(--font-size-base);
 }
 
 *, *:before, *:after {
@@ -54,7 +64,7 @@ hr {
 
 /* Input and Button Base Styles */
 input, button {
-    font-size: 1.2rem;
+    font-size: inherit; /* Inherit from the body/html */
     padding: 0.8rem;
     margin: 0.5rem;
     border-radius: var(--border-radius);
@@ -88,7 +98,6 @@ button:disabled {
 .app-container {
     width: 100%;
     height: 100%;
-    /* min-height: 100vh; */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -112,23 +121,50 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-    background-color: var(--primary-bg);
+    background-color: #403e3e;
     padding: var(--spacing-sm) var(--spacing-md);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-light);
 }
 
 .game-info {
-    font-size: 1.5rem;
+    font-size: var(--font-size-small);
     font-weight: bold;
     text-align: center;
     margin: 0;
     color: #aaa;
 }
 
+.host-header-container {
+    display: flex;
+    flex-wrap: wrap; /* Allows items to wrap onto the next line on smaller screens */
+    justify-content: space-between; /* Pushes the title and game info to opposite ends */
+    align-items: center; /* Vertically aligns the items */
+    gap: var(--spacing-md);
+    padding: 0 var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+}
+
+.host-controls-title {
+    font-size: var(--font-size-xl);
+    text-align: center;
+    margin: var(--spacing-sm) 0;
+    color: var(--text-muted);
+}
+
+.host-controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm);
+    background-color: #403e3e;
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-light);
+}
+
 .copy-button {
     padding: 0.8rem;
-    font-size: 1.2rem;
     margin: 0.5rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--accent-green);
@@ -146,34 +182,18 @@ button:disabled {
     outline-offset: 2px;
 }
 
-.host-controls-title {
-    font-size: 1.375rem;
-    text-align: center;
-    margin: var(--spacing-sm) 0;
-    color: var(--text-muted);
-}
-
-.host-controls {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-sm);
-    background-color: var(--primary-bg);
-    border-radius: var(--border-radius);
-    box-shadow: var(--shadow-light);
-}
-
-.control-button {
+.control-button, .lock-button, .unlock-button {
     padding: 0.8rem;
-    font-size: 1.2rem;
     margin: 0.5rem;
     border-radius: var(--border-radius);
-    border: 1px solid var(--accent-blue);
-    background-color: var(--accent-blue);
     color: var(--text-color);
     cursor: pointer;
     transition: background-color 0.3s, transform 0.1s;
+}
+
+.control-button {
+    background-color: var(--accent-blue);
+    border: 1px solid var(--accent-blue);
 }
 
 .control-button:hover,
@@ -181,6 +201,34 @@ button:disabled {
     background-color: #0056b3;
     transform: scale(1.02);
     outline: 2px solid var(--accent-blue);
+    outline-offset: 2px;
+}
+
+.lock-button {
+    background-color: #f0ad4e;
+    border: 1px solid #eea236;
+}
+
+.lock-button:hover,
+.lock-button:focus {
+    background-color: #ec971f;
+    border-color: #d58512;
+    transform: scale(1.02);
+    outline: 2px solid #ec971f;
+    outline-offset: 2px;
+}
+
+.unlock-button {
+    background-color: firebrick;
+    border: 1px solid #6c757d;
+}
+
+.unlock-button:hover,
+.unlock-button:focus {
+    background-color: #5a6268;
+    border-color: #545b62;
+    transform: scale(1.02);
+    outline: 2px solid #5a6268;
     outline-offset: 2px;
 }
 
@@ -200,7 +248,6 @@ button:disabled {
 
 .score-display {
     margin-left: auto;
-    font-size: 1.2rem;
     color: var(--text-muted);
 }
 
@@ -216,7 +263,7 @@ button:disabled {
     border: 1px solid #888;
     background-color: #3a3a3a;
     color: var(--text-color);
-    font-size: 1.8rem;
+    font-size: 1.8rem; /* Kept fixed for icon-like button */
     line-height: 1;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
@@ -241,7 +288,7 @@ button:disabled {
 .buzzer {
     width: 90%;
     aspect-ratio: 1 / 1;
-    font-size: 3rem;
+    font-size: var(--font-size-buzzer);
     font-weight: bold;
     border-radius: 50%;
     display: flex;
@@ -250,10 +297,14 @@ button:disabled {
     box-sizing: border-box;
     padding: var(--spacing-sm) var(--spacing-md);
     color: var(--text-color);
-    background-color: chartreuse;
-    border: 5px solid #ff4500;
+    background-color: #039109;
+    border: 5px solid #b9453b;
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.buzzer:hover:not(:disabled) {
+    background-color: #039109; /* Keep color the same on hover */
 }
 
 .buzzer:disabled {
@@ -273,6 +324,28 @@ button:disabled {
     transform: scale(0.97);
 }
 
+.buzzed-order-list {
+    border: 2px solid #7ba131; /* Gold border */
+    border-radius: var(--border-radius);
+    padding: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    background-color: #2c2c2c; /* Slightly lighter dark background */
+}
+
+.buzzed-order-list li {
+    font-size: var(--font-size-base); /* Make text bigger */
+    font-weight: bold;
+    color: var(--text-color);
+    background-color: transparent; /* Override the default li background */
+    padding: var(--spacing-md);
+    margin: var(--spacing-sm) 0;
+    border-radius: 6px;
+    /* border-left: 5px solid; /* Add a colored left border */ */
+    list-style-type: decimal; /* Ensure numbers are shown */
+    list-style-position: inside;
+    text-align: left;
+}
+
 .player-list {
     list-style: none;
     padding: 0;
@@ -281,7 +354,6 @@ button:disabled {
 }
 
 .player-list li {
-    font-size: 1.125rem;
     background-color: var(--secondary-bg);
     margin: 0.2rem 0;
     padding: 0.5rem;
@@ -326,13 +398,11 @@ button:disabled {
     justify-content: center;
     gap: var(--spacing-sm);
     margin: 1.5rem 0;
-    font-size: 1.1rem;
 }
 
 .delta-control__input {
     width: 70px;
     padding: 0.8rem;
-    font-size: 1.2rem;
     margin: 0.5rem;
     text-align: center;
     background-color: #333;
@@ -347,6 +417,30 @@ button:disabled {
 .delta-control__input::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
+}
+
+.player-info-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--spacing-sm);
+    width: 100%;
+    margin-bottom: var(--spacing-md);
+}
+
+.player-view-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: var(--spacing-md);
+}
+
+.player-lists-wrapper {
+    width: 100%;
+    max-width: 400px; /* Same as player-view-container */
+    padding: 0 var(--spacing-md);
+    box-sizing: border-box;
 }
 
 .player-view-container {
@@ -416,17 +510,17 @@ button:disabled {
     gap: var(--spacing-md);
 }
 
-.setting-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 1.1rem;
+.setting-item .file-uploader-container {
+    padding: 0;
+    background-color: transparent;
+    box-shadow: none;
+    flex-grow: 1;
+    margin-left: var(--spacing-sm);
 }
 
 .setting-item input,
 .setting-item select {
     padding: 0.8rem;
-    font-size: 1.2rem;
     margin: 0.5rem;
     background-color: #333;
     color: var(--text-color);
@@ -486,6 +580,37 @@ button:disabled {
     overflow: hidden;
     box-shadow: var(--shadow-medium);
     transition: box-shadow 0.3s;
+    position: relative;
+}
+
+.pdf-close-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 10;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    margin: 0;
+    border-radius: 50%;
+    background-color: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 1px solid #fff;
+    font-size: 1.2rem;
+    font-weight: bold;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.pdf-close-button:hover,
+.pdf-close-button:focus {
+    background-color: rgba(220, 0, 0, 0.8);
+    transform: scale(1.1);
+    outline: none;
 }
 
 .pdf-viewer-container:hover {
@@ -505,7 +630,6 @@ button:disabled {
     height: 100%;
     background-color: var(--secondary-bg);
     color: #ccc;
-    font-size: 1.2rem;
     font-style: italic;
     text-align: center;
     border-radius: var(--border-radius);
@@ -519,17 +643,16 @@ button:disabled {
     background-color: var(--primary-bg);
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-light);
-    max-width: 100%; /* Prevent overflow beyond parent */
-    box-sizing: border-box; /* Ensure padding is included in width */
-    overflow-x: hidden; /* Hide horizontal overflow */
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .file-input {
-    width: 100%; /* Ensure input fits within container */
-    max-width: 100%; /* Prevent input from exceeding container */
+    width: 100%;
+    max-width: 100%;
     padding: 0.8rem;
-    font-size: 1.2rem;
-    margin: 0; /* Remove margin to reduce spacing */
+    margin: 0;
     background-color: #333;
     color: var(--text-color);
     border: 1px solid #444;
@@ -581,7 +704,6 @@ button:disabled {
     text-align: center;
 }
 
-/* Styles for the form inside the home section */
 .home-section form {
     display: flex;
     flex-direction: column;
@@ -613,7 +735,7 @@ button:disabled {
     }
 
     .file-uploader-container {
-        padding: var(--spacing-xs); /* Reduce padding on smaller screens */
+        padding: var(--spacing-xs);
     }
 }
 
@@ -623,32 +745,20 @@ button:disabled {
         align-items: center;
     }
 
-    .control-button {
+    .control-button, .lock-button, .unlock-button {
         width: 100%;
         max-width: 200px;
-    }
-
-    .game-info {
-        font-size: 1.25rem;
     }
 
     .pdf-viewer-container {
         height: 50vh;
     }
-
-    .buzzer {
-        font-size: 2.5rem;
-    }
-
-    .file-input {
-        font-size: 1rem; /* Slightly smaller for mobile */
-    }
 }
 
 /* Light Mode Support for Components (Excluding Background) */
 @media (prefers-color-scheme: light) {
-    .game-info-container,
-    .host-controls,
+    /* .game-info-container, */
+    /* .host-controls, */
     .player-list-item,
     .file-uploader-container {
         background-color: #e0e0e0;
@@ -658,3 +768,4 @@ button:disabled {
         color: #333;
     }
 }
+

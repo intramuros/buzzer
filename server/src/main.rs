@@ -232,7 +232,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 if game.host_id == sender_id {
                     let score = game.scores.entry(player_id).or_insert(0);
-                    *score = (*score + delta).max(0); // Prevent negative scores
+                    *score += delta; 
                     info!(
                         "Host {} updated score for player {} to {}",
                         sender_id, player_id, *score

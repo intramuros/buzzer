@@ -288,23 +288,28 @@ fn Home() -> Element {
 #[component]
 pub fn GameRoom(code: String) -> Element {
     let mut app_ctx = use_context::<AppContext>();
-    let my_id = app_ctx.player_id.read();
     let nav = navigator();
-    info!("Game state: {:?}", &app_ctx.game_state);
-    if app_ctx.game_state.read().is_none() {
-        nav.push(Route::Home {});
-    }
-    let host_id = app_ctx.game_state.read().as_ref().unwrap().host_id;
-    let is_host = *my_id == Some(host_id);
-    app_ctx.is_host.set(is_host);
-    let file_url = use_signal::<Option<String>>(|| None);
 
-    rsx! {
-        if is_host {
-            HostView { file_url }
-        } else {
-            PlayerView {}
+    let game_state_guard = app_ctx.game_state.read();
+
+    if let Some(game) = game_state_guard.as_ref() {
+        let my_id = *app_ctx.player_id.read();
+        let is_host = my_id.is_some() && my_id == Some(game.host_id);
+        app_ctx.is_host.set(is_host);
+        let file_url = use_signal::<Option<String>>(|| None);
+
+        rsx! {
+            if is_host {
+                HostView { file_url }
+            } else {
+                PlayerView {}
+            }
         }
+    } else {
+        use_effect(move || {
+            nav.push(Route::Home {});
+        });
+        rsx! {}
     }
 }
 
