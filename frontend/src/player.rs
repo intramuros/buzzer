@@ -1,6 +1,29 @@
-use crate::{host::PlayerBuzzOrderList, AppContext};
+use crate::AppContext;
 use common::*;
 use dioxus::prelude::*;
+
+#[component]
+pub fn PlayerBuzzOrderList() -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let game_state_guard = app_ctx.game_state.read();
+    let players_data = if let Some(game) = game_state_guard.as_ref() {
+        game.buzzer_order.iter().cloned().collect()
+    } else {
+        vec![]
+    };
+    rsx! {
+        h3 { "Buzzed" }
+        if !players_data.is_empty() {
+            ol { class: "player-list buzzed-order-list",
+                for (_, player_name) in players_data {
+                    li {
+                        "{player_name}"
+                    }
+                }
+            }
+        }
+    }
+}
 
 #[component]
 pub fn PlayerView() -> Element {

@@ -81,6 +81,7 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                 div { class: "file-viewer-column",
                     FileViewer { file_url }
                 }
+                // div { class: "splitter" }
             }
             // --- Right Column ---
             div { class: "host-controls-column",
@@ -178,19 +179,57 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
 #[component]
 pub fn PlayerBuzzOrderList() -> Element {
     let app_ctx = use_context::<AppContext>();
+    let host_ctx = use_context::<HostContext>(); // Get host context for score_delta
     let game_state_guard = app_ctx.game_state.read();
-    let players_data = if let Some(game) = game_state_guard.as_ref() {
-        game.buzzer_order.iter().collect()
+
+    let buzzed_players = if let Some(game) = game_state_guard.as_ref() {
+        game.buzzer_order
+            .iter()
+            .map(|(id, name)| (*id, name.clone())) // Clone to own the data
+            .collect::<Vec<_>>()
     } else {
         vec![]
     };
+
     rsx! {
         h3 { "Buzzed" }
-        if !players_data.is_empty() {
-            ol { class: "player-list buzzed-order-list",
-                for (_, player_name) in players_data {
+        if !buzzed_players.is_empty() {
+            ol {
+                class: "player-list buzzed-order-list",
+                for (player_id, player_name) in buzzed_players {
                     li {
-                        "{player_name}"
+                        class: "player-list-item", // Use the same class for styling
+                        span { class: "player-name", "{player_name}" }
+                        // Add score buttons similar to the main player list
+                        div {
+                            class: "score-buttons-container",
+                            button {
+                                class: "score-button",
+                                onclick: move |_| {
+                                    if let Some(code) = *app_ctx.game_code.read() {
+                                        app_ctx.send(ClientToServer::UpdateScore {
+                                            game_code: code,
+                                            player_id,
+                                            delta: *host_ctx.score_delta.read(),
+                                        });
+                                    }
+                                },
+                                "+"
+                            }
+                            button {
+                                class: "score-button",
+                                onclick: move |_| {
+                                    if let Some(code) = *app_ctx.game_code.read() {
+                                        app_ctx.send(ClientToServer::UpdateScore {
+                                            game_code: code,
+                                            player_id,
+                                            delta: -(*host_ctx.score_delta.read()),
+                                        });
+                                    }
+                                },
+                                "-"
+                            }
+                        }
                     }
                 }
             }

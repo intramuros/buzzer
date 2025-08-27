@@ -1,5 +1,4 @@
 
-/* Global Variables */
 :root {
     --primary-bg: #1e1e1e;
     --secondary-bg: #2a2a2a;
@@ -16,37 +15,29 @@
     --spacing-md: 16px;
     --spacing-lg: 24px;
     --font-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-
-    /* Responsive Font Sizes */
     --font-size-small: clamp(0.6rem, 0.75rem + 0.5vw, 1.1rem);
     --font-size-base: clamp(0.875rem, 0.75rem + 0.5vw, 1.1rem);
     --font-size-lg: clamp(1rem, 0.8rem + 1vw, 1.5rem);
     --font-size-xl: clamp(1.25rem, 1rem + 1.5vw, 2rem);
     --font-size-buzzer: clamp(1rem, 1rem + 8vw, 3rem);
 }
-
-/* Base Styles */
 html {
     box-sizing: border-box;
-    /* Set the base font size to be responsive */
     font-size: var(--font-size-base);
 }
-
 *, *:before, *:after {
     box-sizing: inherit;
 }
-
 html, body {
     margin: 0;
     padding: 0;
     width: 100%;
     height: 100%;
     overflow: auto;
-    background-color: #0e0e0e; /* Enforce black background */
+    background-color: #0e0e0e;
     color: var(--text-color);
     font-family: var(--font-primary);
 }
-
 hr {
     border: none;
     height: 1px;
@@ -54,17 +45,14 @@ hr {
     width: 80%;
     margin: var(--spacing-lg) auto;
 }
-
 #main {
     width: 100%;
     height: 100%;
     margin: 0;
     padding: 0;
 }
-
-/* Input and Button Base Styles */
 input, button {
-    font-size: inherit; /* Inherit from the body/html */
+    font-size: inherit;
     padding: 0.8rem;
     margin: 0.5rem;
     border-radius: var(--border-radius);
@@ -72,14 +60,12 @@ input, button {
     background-color: #333;
     color: var(--text-color);
 }
-
 button {
     cursor: pointer;
     background-color: var(--accent-blue);
     border-color: var(--accent-blue);
     transition: background-color 0.3s, transform 0.1s;
 }
-
 button:hover,
 button:focus {
     background-color: #0056b3;
@@ -87,14 +73,11 @@ button:focus {
     outline: 2px solid var(--accent-blue);
     outline-offset: 2px;
 }
-
 button:disabled {
     background-color: #555;
     color: var(--text-disabled);
     cursor: not-allowed;
 }
-
-/* App Container */
 .app-container {
     width: 100%;
     height: 100%;
@@ -103,8 +86,6 @@ button:disabled {
     align-items: center;
     justify-content: center;
 }
-
-/* Game Room Styles */
 .game-room-container {
     display: flex;
     flex-direction: column;
@@ -116,7 +97,6 @@ button:disabled {
     gap: 0;
     font-family: var(--font-primary);
 }
-
 .game-info-container {
     display: flex;
     align-items: center;
@@ -126,7 +106,6 @@ button:disabled {
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-light);
 }
-
 .game-info {
     font-size: var(--font-size-small);
     font-weight: bold;
@@ -134,24 +113,21 @@ button:disabled {
     margin: 0;
     color: #aaa;
 }
-
 .host-header-container {
     display: flex;
-    flex-wrap: wrap; /* Allows items to wrap onto the next line on smaller screens */
-    justify-content: space-between; /* Pushes the title and game info to opposite ends */
-    align-items: center; /* Vertically aligns the items */
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
     gap: var(--spacing-md);
     padding: 0 var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
 }
-
 .host-controls-title {
     font-size: var(--font-size-xl);
     text-align: center;
     margin: var(--spacing-sm) 0;
     color: var(--text-muted);
 }
-
 .host-controls {
     display: flex;
     flex-wrap: wrap;
@@ -162,7 +138,6 @@ button:disabled {
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-light);
 }
-
 .copy-button {
     padding: 0.8rem;
     margin: 0.5rem;
@@ -173,7 +148,6 @@ button:disabled {
     cursor: pointer;
     transition: background-color 0.3s, transform 0.1s;
 }
-
 .copy-button:hover,
 .copy-button:focus {
     background-color: #45a049;
@@ -181,7 +155,6 @@ button:disabled {
     outline: 2px solid var(--accent-green);
     outline-offset: 2px;
 }
-
 .control-button, .lock-button, .unlock-button {
     padding: 0.8rem;
     margin: 0.5rem;
@@ -190,12 +163,10 @@ button:disabled {
     cursor: pointer;
     transition: background-color 0.3s, transform 0.1s;
 }
-
 .control-button {
     background-color: var(--accent-blue);
     border: 1px solid var(--accent-blue);
 }
-
 .control-button:hover,
 .control-button:focus {
     background-color: #0056b3;
@@ -203,12 +174,10 @@ button:disabled {
     outline: 2px solid var(--accent-blue);
     outline-offset: 2px;
 }
-
 .lock-button {
     background-color: #f0ad4e;
     border: 1px solid #eea236;
 }
-
 .lock-button:hover,
 .lock-button:focus {
     background-color: #ec971f;
@@ -217,12 +186,10 @@ button:disabled {
     outline: 2px solid #ec971f;
     outline-offset: 2px;
 }
-
 .unlock-button {
     background-color: firebrick;
     border: 1px solid #6c757d;
 }
-
 .unlock-button:hover,
 .unlock-button:focus {
     background-color: #5a6268;
@@ -231,26 +198,22 @@ button:disabled {
     outline: 2px solid #5a6268;
     outline-offset: 2px;
 }
-
 .control-button:disabled {
     background-color: #555;
     border-color: #777;
     color: var(--text-disabled);
     cursor: not-allowed;
 }
-
 .score-control {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
     padding: var(--spacing-sm) 0;
 }
-
 .score-display {
     margin-left: auto;
     color: var(--text-muted);
 }
-
 .score-button {
     width: 44px;
     height: 44px;
@@ -263,12 +226,11 @@ button:disabled {
     border: 1px solid #888;
     background-color: #3a3a3a;
     color: var(--text-color);
-    font-size: 1.8rem; /* Kept fixed for icon-like button */
+    font-size: 1.8rem;
     line-height: 1;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
 }
-
 .score-button:hover:not(:disabled),
 .score-button:focus:not(:disabled) {
     background-color: #555;
@@ -276,7 +238,6 @@ button:disabled {
     outline: 2px solid #888;
     outline-offset: 2px;
 }
-
 .buzzer-container {
     display: flex;
     justify-content: center;
@@ -284,7 +245,6 @@ button:disabled {
     width: 100%;
     padding: var(--spacing-md);
 }
-
 .buzzer {
     width: 90%;
     aspect-ratio: 1 / 1;
@@ -302,70 +262,59 @@ button:disabled {
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
-
 .buzzer:hover:not(:disabled) {
-    background-color: #039109; /* Keep color the same on hover */
+    background-color: #039109;
 }
-
 .buzzer:disabled {
     background-color: #444;
     border-color: #666;
     color: var(--text-disabled);
     cursor: not-allowed;
 }
-
 .buzzer.buzzed {
     background-color: #ffd700;
     color: #1a1a1a;
     border-color: #daa520;
 }
-
 .buzzer:active:not(:disabled) {
     transform: scale(0.97);
 }
-
 .buzzed-order-list {
-    border: 2px solid #7ba131; /* Gold border */
+    border: 2px solid #7ba131;
     border-radius: var(--border-radius);
     padding: var(--spacing-sm);
     margin-top: var(--spacing-sm);
-    background-color: #2c2c2c; /* Slightly lighter dark background */
+    background-color: #2c2c2c;
 }
-
 .buzzed-order-list li {
-    font-size: var(--font-size-base); /* Make text bigger */
+    font-size: var(--font-size-base);
     font-weight: bold;
     color: var(--text-color);
-    background-color: transparent; /* Override the default li background */
+    background-color: transparent;
     padding: var(--spacing-md);
     margin: var(--spacing-sm) 0;
     border-radius: 6px;
-    /* border-left: 5px solid; /* Add a colored left border */ */
-    list-style-type: decimal; /* Ensure numbers are shown */
+    list-style-type: decimal;
     list-style-position: inside;
     text-align: left;
 }
-
 .player-list {
     list-style: none;
     padding: 0;
     margin: 0;
     text-align: center;
 }
-
 .player-list li {
     background-color: var(--secondary-bg);
     margin: 0.2rem 0;
     padding: 0.5rem;
     border-radius: 4px;
 }
-
 .player-list li.winner {
     background-color: #ffd700;
     color: #1a1a1a;
     font-weight: bold;
 }
-
 .player-list-item {
     display: flex;
     align-items: center;
@@ -376,22 +325,18 @@ button:disabled {
     margin-bottom: var(--spacing-sm);
     transition: background-color 0.2s;
 }
-
 .player-list-item:hover {
     background-color: var(--secondary-bg);
 }
-
 .player-name {
     font-weight: bold;
     flex: 1;
     text-align: left;
 }
-
 .score-buttons-container {
     display: flex;
     gap: var(--spacing-sm);
 }
-
 .delta-control {
     display: flex;
     align-items: center;
@@ -399,7 +344,6 @@ button:disabled {
     gap: var(--spacing-sm);
     margin: 1.5rem 0;
 }
-
 .delta-control__input {
     width: 70px;
     padding: 0.8rem;
@@ -412,13 +356,11 @@ button:disabled {
     -webkit-appearance: none;
     -moz-appearance: textfield;
 }
-
 .delta-control__input::-webkit-inner-spin-button,
 .delta-control__input::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
-
 .player-info-stack {
     display: flex;
     flex-direction: column;
@@ -427,7 +369,6 @@ button:disabled {
     width: 100%;
     margin-bottom: var(--spacing-md);
 }
-
 .player-view-wrapper {
     display: flex;
     flex-direction: column;
@@ -435,14 +376,12 @@ button:disabled {
     width: 100%;
     gap: var(--spacing-md);
 }
-
 .player-lists-wrapper {
     width: 100%;
-    max-width: 400px; /* Same as player-view-container */
+    max-width: 400px;
     padding: 0 var(--spacing-md);
     box-sizing: border-box;
 }
-
 .player-view-container {
     margin: 0 auto;
     max-width: 400px;
@@ -454,7 +393,6 @@ button:disabled {
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-medium);
 }
-
 .settings-button {
     position: fixed;
     top: 20px;
@@ -474,7 +412,6 @@ button:disabled {
     box-shadow: var(--shadow-medium);
     transition: background-color 0.3s, transform 0.1s;
 }
-
 .settings-button:hover,
 .settings-button:focus {
     background-color: #4a5568;
@@ -482,7 +419,6 @@ button:disabled {
     outline: 2px solid #4a5568;
     outline-offset: 2px;
 }
-
 .settings-backdrop {
     position: fixed;
     top: 0;
@@ -492,7 +428,6 @@ button:disabled {
     background-color: rgba(0, 0, 0, 0.7);
     z-index: 10;
 }
-
 .settings-menu {
     position: fixed;
     top: 50%;
@@ -509,7 +444,6 @@ button:disabled {
     flex-direction: column;
     gap: var(--spacing-md);
 }
-
 .setting-item .file-uploader-container {
     padding: 0;
     background-color: transparent;
@@ -517,7 +451,6 @@ button:disabled {
     flex-grow: 1;
     margin-left: var(--spacing-sm);
 }
-
 .setting-item input,
 .setting-item select {
     padding: 0.8rem;
@@ -527,14 +460,11 @@ button:disabled {
     border: 1px solid #444;
     border-radius: var(--border-radius);
 }
-
 .settings-footer {
     margin-top: var(--spacing-sm);
     display: flex;
     justify-content: flex-end;
 }
-
-/* Host View and PDF Viewer Styles */
 .host-view-container {
     display: flex;
     flex-direction: row;
@@ -545,7 +475,6 @@ button:disabled {
     margin: 0;
     box-sizing: border-box;
 }
-
 .host-controls-column {
     flex: 0 0 300px;
     background-color: var(--primary-bg);
@@ -557,20 +486,17 @@ button:disabled {
     gap: var(--spacing-md);
     overflow-y: auto;
 }
-
 .host-controls-column:only-child {
-    margin: 0 auto; /* Center horizontally when only child */
-    flex: 0 0 auto; /* Override fixed width */
-    max-width: 500px; /* Constrain width for better appearance */
+    margin: 0 auto;
+    flex: 0 0 auto;
+    max-width: 500px;
 }
-
 .file-viewer-column {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-md);
 }
-
 .pdf-viewer-container {
     width: 100%;
     background-color: #fff;
@@ -582,7 +508,6 @@ button:disabled {
     transition: box-shadow 0.3s;
     position: relative;
 }
-
 .pdf-close-button {
     position: absolute;
     top: 8px;
@@ -605,24 +530,20 @@ button:disabled {
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
 }
-
 .pdf-close-button:hover,
 .pdf-close-button:focus {
     background-color: rgba(220, 0, 0, 0.8);
     transform: scale(1.1);
     outline: none;
 }
-
 .pdf-viewer-container:hover {
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
-
 .pdf-iframe {
     width: 100%;
     height: 100%;
     border: none;
 }
-
 .pdf-placeholder {
     display: flex;
     align-items: center;
@@ -634,7 +555,6 @@ button:disabled {
     text-align: center;
     border-radius: var(--border-radius);
 }
-
 .file-uploader-container {
     display: flex;
     flex-direction: column;
@@ -647,7 +567,6 @@ button:disabled {
     box-sizing: border-box;
     overflow-x: hidden;
 }
-
 .file-input {
     width: 100%;
     max-width: 100%;
@@ -661,7 +580,6 @@ button:disabled {
     transition: background-color 0.3s;
     box-sizing: border-box;
 }
-
 .file-input::file-selector-button {
     background-color: var(--accent-blue);
     color: var(--text-color);
@@ -671,19 +589,15 @@ button:disabled {
     cursor: pointer;
     transition: background-color 0.3s;
 }
-
 .file-input::file-selector-button:hover {
     background-color: #0056b3;
 }
-
 .error-message {
     color: #ff4500;
     font-size: 0.9rem;
     margin-top: var(--spacing-xs);
     text-align: center;
 }
-
-/* Home Page Styles */
 .home-page {
     width: 100%;
     min-height: 100vh;
@@ -693,7 +607,6 @@ button:disabled {
     padding: var(--spacing-md);
     gap: var(--spacing-md);
 }
-
 .home-section {
     width: 100%;
     max-width: 500px;
@@ -703,62 +616,47 @@ button:disabled {
     box-shadow: var(--shadow-medium);
     text-align: center;
 }
-
 .home-section form {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
     margin-top: var(--spacing-sm);
 }
-
-/* Error Styles */
 .error {
     color: #ff4500;
 }
-
-/* Responsive Adjustments */
 @media (max-width: 992px) {
     .host-view-container {
         flex-direction: column;
         gap: var(--spacing-md);
         padding: var(--spacing-md);
     }
-
     .host-controls-column,
     .file-viewer-column {
         max-width: 100%;
         width: 100%;
     }
-
     .pdf-viewer-container {
         height: 70vh;
     }
-
     .file-uploader-container {
         padding: var(--spacing-xs);
     }
 }
-
 @media (max-width: 600px) {
     .host-controls {
         flex-direction: column;
         align-items: center;
     }
-
     .control-button, .lock-button, .unlock-button {
         width: 100%;
         max-width: 200px;
     }
-
     .pdf-viewer-container {
         height: 50vh;
     }
 }
-
-/* Light Mode Support for Components (Excluding Background) */
 @media (prefers-color-scheme: light) {
-    /* .game-info-container, */
-    /* .host-controls, */
     .player-list-item,
     .file-uploader-container {
         background-color: #e0e0e0;
@@ -768,4 +666,39 @@ button:disabled {
         color: #333;
     }
 }
-
+/* .splitter { */
+/*     flex: 0 0 5px; */
+/*     background: #ccc; */
+/*     cursor: col-resize; */
+/* } */
+/* <script> */
+/*     document.addEventListener('DOMContentLoaded', function () { */
+/*         const splitter = document.querySelector('.splitter'); */
+/*         const leftPanel = document.querySelector('.file-viewer-column'); */
+/*         const rightPanel = document.querySelector('.host-controls-column'); */
+/**/
+/*         let isDragging = false; */
+/**/
+/*         splitter.addEventListener('mousedown', function (e) { */
+/*             isDragging = true; */
+/*         }); */
+/**/
+/*         document.addEventListener('mousemove', function (e) { */
+/*             if (!isDragging) return; */
+/**/
+/*             const container = splitter.parentElement; */
+/*             const containerRect = container.getBoundingClientRect(); */
+/*             const newLeftWidth = e.clientX - containerRect.left; */
+/*             const newRightWidth = containerRect.right - e.clientX; */
+/**/
+/*             leftPanel.style.flex = `0 0 ${newLeftWidth}px`; */
+/*             rightPanel.style.flex = `0 0 ${newRightWidth}px`; */
+/*         }); */
+/**/
+/*         document.addEventListener('mouseup', function (e) { */
+/*             isDragging = false; */
+/*         }); */
+/*     }); */
+/* </script> */
+/* "" */
+/**/

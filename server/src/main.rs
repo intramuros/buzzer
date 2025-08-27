@@ -14,6 +14,7 @@ use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use std::{
     collections::{HashMap, VecDeque},
+    env,
     net::SocketAddr,
     sync::Arc,
 };
@@ -54,7 +55,11 @@ async fn main() {
         )
         .layer(cors);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
+    let addr_str = format!("{}:{}", host, port);
+    let addr: SocketAddr = addr_str.parse().expect("Invalid address format");
+
     info!("Server listening on {}", addr);
     axum::serve(tokio::net::TcpListener::bind(addr).await.unwrap(), app)
         .await

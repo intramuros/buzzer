@@ -154,7 +154,7 @@ fn AppLayout() -> Element {
                             }
                             // --- Add this new match arm ---
                             ServerToClient::PlayerBuzzed {
-                                player_id,
+                                player_id: _,
                                 player_name,
                             } => {
                                 // Check the signal to see if this client is the host
@@ -179,7 +179,7 @@ fn AppLayout() -> Element {
                     Err(e) => error!("Failed to parse S2C message: {}", e),
                 }
             }
-            info!("WebSocket connection closed");
+            info!("WebSocket connection closed!");
         });
     });
 
@@ -286,18 +286,40 @@ fn Home() -> Element {
 }
 
 #[component]
-pub fn GameRoom(code: String) -> Element {
+pub fn GameRoom(code: usize) -> Element {
     let mut app_ctx = use_context::<AppContext>();
     let nav = navigator();
+    let file_url = use_signal::<Option<String>>(|| None); // Unconditional hook
 
-    let game_state_guard = app_ctx.game_state.read();
+    // Unconditional effect for handling loading/redirect
+    use_effect(move || {
+        // Only run the timer if the state is initially None
+        if app_ctx.game_state.read().is_none() {
+            spawn(async move {
+                gloo_timers::future::TimeoutFuture::new(200).await;
+                // Re-check after the delay
+                if app_ctx.game_state.read().is_none() {
+                    nav.push(Route::Home {});
+                }
+            });
+        }
+    });
 
-    if let Some(game) = game_state_guard.as_ref() {
-        let my_id = *app_ctx.player_id.read();
-        let is_host = my_id.is_some() && my_id == Some(game.host_id);
-        app_ctx.is_host.set(is_host);
-        let file_url = use_signal::<Option<String>>(|| None);
+    // Read the game state and decide what to render.
+    // The borrow from `read()` is scoped to prevent it from outliving the rsx! macro.
+    let is_host_opt = {
+        let game_state_guard = app_ctx.game_state.read();
+        if let Some(game) = game_state_guard.as_ref() {
+            let my_id = *app_ctx.player_id.read();
+            let is_host = my_id.is_some() && my_id == Some(game.host_id);
+            app_ctx.is_host.set(is_host);
+            Some(is_host)
+        } else {
+            None
+        }
+    };
 
+    if let Some(is_host) = is_host_opt {
         rsx! {
             if is_host {
                 HostView { file_url }
@@ -306,10 +328,13 @@ pub fn GameRoom(code: String) -> Element {
             }
         }
     } else {
-        use_effect(move || {
-            nav.push(Route::Home {});
-        });
-        rsx! {}
+        // Render a loading message while we wait for the effect to run.
+        rsx! {
+            div {
+                class: "loading-page",
+                h1 { "Joining game..." }
+            }
+        }
     }
 }
 
