@@ -155,15 +155,26 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
             // Trim whitespace from the name
             player_name = player_name.trim().to_string();
 
-            if player_name.is_empty() || player_name.len() > 12 {
+            if player_name.is_empty() {
                 let error_msg = ServerToClient::Error {
-                    message: "Player name must be between 1 and 12 characters.".to_string(),
+                    message: "Player name cannot be empty.".to_string(),
                 };
-                // Send an error back to only the player who tried to join
                 send_to_player(sender_id, &error_msg, &state).await;
-                return; // Stop processing the invalid request
+                return;
             }
+
+
             if let Some(mut game) = state.games.get_mut(&game_code) {
+                // --- Check for duplicate names ---
+                let name_exists = game.players.iter().any(|p| p.name() == player_name);
+                if name_exists {
+                    let error_msg = ServerToClient::Error {
+                        message: format!("Player name '{}' is already taken.", player_name),
+                    };
+                    send_to_player(sender_id, &error_msg, &state).await;
+                    return;
+                }
+
                 game.players.insert(
                     sender_id,
                     Actor::Player {

@@ -185,7 +185,13 @@ pub fn PlayerBuzzOrderList() -> Element {
     let buzzed_players = if let Some(game) = game_state_guard.as_ref() {
         game.buzzer_order
             .iter()
-            .map(|(id, name)| (*id, name.clone())) // Clone to own the data
+            .map(|(player_id, name)| 
+                (
+                    *player_id,
+                    name.clone(),
+                    *game.scores.get(player_id).unwrap_or(&0),
+                )
+            )
             .collect::<Vec<_>>()
     } else {
         vec![]
@@ -196,10 +202,11 @@ pub fn PlayerBuzzOrderList() -> Element {
         if !buzzed_players.is_empty() {
             ol {
                 class: "player-list buzzed-order-list",
-                for (player_id, player_name) in buzzed_players {
+                for (player_id, player_name, score) in buzzed_players {
                     li {
                         class: "player-list-item", // Use the same class for styling
                         span { class: "player-name", "{player_name}" }
+                        span { class: "score-display", "{score}" }
                         // Add score buttons similar to the main player list
                         div {
                             class: "score-buttons-container",

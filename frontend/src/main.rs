@@ -157,17 +157,29 @@ fn AppLayout() -> Element {
                                 player_id: _,
                                 player_name,
                             } => {
-                                // Check the signal to see if this client is the host
+                                // Check if the current client is the host
                                 if *app_ctx.is_host.read() {
-                                    log::info!(
-                                        "Player '{}' buzzed! Playing sound for host.",
-                                        player_name
-                                    );
+                                    // Check if the buzzer list is currently empty.
+                                    let is_first_buzz = app_ctx.game_state.read()
+                                        .as_ref()
+                                        .map_or(false, |gs| gs.buzzer_order.is_empty());
 
-                                    // Get the sound selected in the settings menu
-                                    let sound_src = app_ctx.buzzer_sound.read().clone();
-                                    if let Ok(audio) = HtmlAudioElement::new_with_src(&sound_src) {
-                                        let _ = audio.play();
+                                    if is_first_buzz {
+                                        log::info!(
+                                            "First player '{}' buzzed! Playing sound for host.",
+                                            player_name
+                                        );
+
+                                        // Get the sound selected in the settings menu
+                                        let sound_src = app_ctx.buzzer_sound.read().clone();
+                                        if let Ok(audio) = HtmlAudioElement::new_with_src(&sound_src) {
+                                            let _ = audio.play();
+                                        }
+                                    } else {
+                                         log::info!(
+                                            "Player '{}' buzzed, but was not first. Sound suppressed.",
+                                            player_name
+                                        );
                                     }
                                 }
                             }
@@ -218,11 +230,24 @@ fn Home() -> Element {
     };
 
     let on_join_submit = move |_| {
+        let name = player_name.read().trim().to_string();
+        if name.is_empty() || name.len() > 12 {
+            *app_ctx.error_message.write() =
+                Some("Name must be between 1 and 12 characters.".to_string());
+            return;
+        }
+
+        if name.to_lowercase() == "host" {
+            *app_ctx.error_message.write() =
+                Some("The name 'Host' is reserved.".to_string());
+            return;
+        }
+
         if let Ok(code) = join_code.read().parse::<usize>() {
             *app_ctx.game_code.write() = Some(code);
             app_ctx.send(ClientToServer::JoinGame {
                 game_code: code,
-                player_name: player_name.read().clone(),
+                player_name: name,
             });
         }
     };
