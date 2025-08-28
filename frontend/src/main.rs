@@ -107,7 +107,13 @@ fn AppLayout() -> Element {
     // Effect to establish and manage WebSocket connection
     use_effect(move || {
         spawn(async move {
-            let ws = WebSocket::open("ws://127.0.0.1:3001/ws").expect("Failed to open WebSocket");
+            let window = web_sys::window().expect("no global `window` exists");
+            let location = window.location();
+            let host = location.host().expect("should have a host");
+            let protocol = location.protocol().expect("should have a protocol");
+            let ws_protocol = if protocol == "https:" { "wss:" } else { "ws:" };
+            let ws_url = format!("{}//{}/ws", ws_protocol, host);
+            let ws = WebSocket::open(&ws_url).expect("Failed to open WebSocket");
             info!("WebSocket connection opened");
             let (tx, mut rx) = ws.split();
             *app_ctx.ws_tx.write() = Some(tx);

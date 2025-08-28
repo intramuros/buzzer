@@ -139,8 +139,9 @@ button:disabled {
     box-shadow: var(--shadow-light);
 }
 .copy-button {
-    padding: 0.8rem;
-    margin: 0.5rem;
+    padding: 0.4rem;
+    margin: 0.3rem;
+    font-size: 0.8rem;
     border-radius: var(--border-radius);
     border: 1px solid var(--accent-green);
     background-color: var(--accent-green);

@@ -253,12 +253,16 @@ fn CopyButton() -> Element {
         if let Some(code) = *app_ctx.game_code.read() {
             if let Some(window) = window() {
                 let clipboard = window.navigator().clipboard();
-                let _ = clipboard.write_text(&code.to_string());
-                host_ctx.copied.set(true);
-                spawn(async move {
-                    gloo_timers::future::TimeoutFuture::new(2000).await;
-                    host_ctx.copied.set(false);
-                });
+                if clipboard.is_undefined() {
+                    log::warn!("Clipboard API not available. Ensure you are on HTTPS.");
+                } else {
+                    let _ = clipboard.write_text(&code.to_string());
+                    host_ctx.copied.set(true);
+                    spawn(async move {
+                        gloo_timers::future::TimeoutFuture::new(2000).await;
+                        host_ctx.copied.set(false);
+                    });
+                }
             } else {
                 info!("Window not available");
             }
