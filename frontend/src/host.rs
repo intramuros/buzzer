@@ -146,11 +146,11 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                                                     app_ctx.send(ClientToServer::UpdateScore {
                                                         game_code: code,
                                                         player_id,
-                                                        delta: *score_delta.read(),
+                                                        delta: -(*score_delta.read()),
                                                     });
                                                 }
                                             },
-                                            "+"
+                                            "-"
                                         }
                                         button {
                                             class: "score-button",
@@ -159,11 +159,11 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                                                     app_ctx.send(ClientToServer::UpdateScore {
                                                         game_code: code,
                                                         player_id,
-                                                        delta: -(*score_delta.read()),
+                                                        delta: *score_delta.read(),
                                                     });
                                                 }
                                             },
-                                            "-"
+                                            "+"
                                         }
                                     }
                                 }
@@ -217,11 +217,11 @@ pub fn PlayerBuzzOrderList() -> Element {
                                         app_ctx.send(ClientToServer::UpdateScore {
                                             game_code: code,
                                             player_id,
-                                            delta: *host_ctx.score_delta.read(),
+                                            delta: -(*host_ctx.score_delta.read()),
                                         });
                                     }
                                 },
-                                "+"
+                                "-"
                             }
                             button {
                                 class: "score-button",
@@ -230,11 +230,11 @@ pub fn PlayerBuzzOrderList() -> Element {
                                         app_ctx.send(ClientToServer::UpdateScore {
                                             game_code: code,
                                             player_id,
-                                            delta: -(*host_ctx.score_delta.read()),
+                                            delta: *host_ctx.score_delta.read(),
                                         });
                                     }
                                 },
-                                "-"
+                                "+"
                             }
                         }
                     }

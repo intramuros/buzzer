@@ -19,11 +19,12 @@
     --font-size-base: clamp(0.875rem, 0.75rem + 0.5vw, 1.1rem);
     --font-size-lg: clamp(1rem, 0.8rem + 1vw, 1.5rem);
     --font-size-xl: clamp(1.25rem, 1rem + 1.5vw, 2rem);
-    --font-size-buzzer: clamp(1rem, 1rem + 8vw, 3rem);
+    --font-size-buzzer: clamp(1.2rem, 1rem + 8vw, 4rem);
 }
 html {
     box-sizing: border-box;
     font-size: var(--font-size-base);
+    -webkit-tap-highlight-color: transparent; /* Disable tap highlight on mobile */
 }
 *, *:before, *:after {
     box-sizing: inherit;
@@ -33,7 +34,7 @@ html, body {
     padding: 0;
     width: 100%;
     height: 100%;
-    overflow: auto;
+    overflow-x: hidden; /* Prevent horizontal scroll */
     background-color: #0e0e0e;
     color: var(--text-color);
     font-family: var(--font-primary);
@@ -72,6 +73,9 @@ button:focus {
     transform: scale(1.02);
     outline: 2px solid var(--accent-blue);
     outline-offset: 2px;
+}
+button:active {
+    transform: scale(0.98); /* Add a subtle press effect */
 }
 button:disabled {
     background-color: #555;
@@ -157,8 +161,8 @@ button:disabled {
     outline-offset: 2px;
 }
 .control-button, .lock-button, .unlock-button {
-    padding: 0.8rem;
-    margin: 0.5rem;
+    padding: 0.7rem 1rem; /* Adjust padding */
+    margin: 0.4rem; /* Adjust margin */
     border-radius: var(--border-radius);
     color: var(--text-color);
     cursor: pointer;
@@ -259,7 +263,7 @@ button:disabled {
     padding: var(--spacing-sm) var(--spacing-md);
     color: var(--text-color);
     background-color: #039109;
-    border: 5px solid #b9453b;
+    border: 8px solid #b9453b; /* Increased border */
     cursor: pointer;
     transition: background-color 0.2s ease, transform 0.1s ease;
 }
@@ -380,7 +384,7 @@ button:disabled {
 .player-lists-wrapper {
     width: 100%;
     max-width: 400px;
-    padding: 0 var(--spacing-md);
+    padding: 0 var(--spacing-sm); /* Reduced padding */
     box-sizing: border-box;
 }
 .player-view-container {
@@ -390,17 +394,17 @@ button:disabled {
     flex-wrap: wrap;
     justify-content: center;
     background-color: var(--primary-bg);
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm); /* Reduced padding */
     border-radius: var(--border-radius);
     box-shadow: var(--shadow-medium);
 }
 .settings-button {
     position: fixed;
-    top: 20px;
-    right: 20px;
+    top: 10px; /* Adjusted position */
+    right: 10px; /* Adjusted position */
     z-index: 5;
-    width: 50px;
-    height: 50px;
+    width: 44px; /* Smaller size */
+    height: 44px; /* Smaller size */
     padding: 0;
     margin: 0.5rem;
     border-radius: 50%;
@@ -645,6 +649,17 @@ button:disabled {
     }
 }
 @media (max-width: 600px) {
+    .home-page, .host-view-container {
+        padding: var(--spacing-sm);
+    }
+    .host-header-container {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--spacing-sm);
+    }
+    .game-info-container {
+        flex-direction: column;
+    }
     .host-controls {
         flex-direction: column;
         align-items: center;
@@ -655,6 +670,29 @@ button:disabled {
     }
     .pdf-viewer-container {
         height: 50vh;
+    }
+    .player-list-item {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.9rem;
+    }
+    .score-button {
+        width: 30px;
+        height: 30px;
+        font-size: 1.4rem;
+    }
+    .settings-menu {
+        padding: var(--spacing-sm);
+        width: 95%;
+    }
+    .setting-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    .settings-button {
+        width: 36px;
+        height: 36px;
+        top: 8px;
+        right: 8px;
     }
 }
 @media (prefers-color-scheme: light) {

@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.7", features = ["ws"] }
+axum = { version = "0.8", features = ["ws"] }
 common = { path = "../common"}
 tokio = { version = "1.0", features = ["full"] }
 tower-http = { version = "0.5.0", features = ["cors", "trace", "fs"] }
@@ -19,3 +19,4 @@ tracing-subscriber = "0.3"
 
 # DashMap is great for concurrent, mutable state, perfect for our games map.
 dashmap = "6.1"
+tokio-tungstenite = "0.27.0"

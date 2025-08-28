@@ -14,7 +14,6 @@ use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use std::{
     collections::{HashMap, VecDeque},
-    env,
     net::SocketAddr,
     sync::Arc,
 };
@@ -264,7 +263,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
 async fn send_to_player(player_id: Uuid, message: &ServerToClient, state: &SharedState) {
     if let Some(tx) = state.connections.get(&player_id) {
         let json_msg = serde_json::to_string(message).unwrap();
-        if tx.send(Message::Text(json_msg)).is_err() {
+        if tx.send(Message::Text(json_msg.into())).is_err() {
             warn!("Failed to send message to player {}", player_id);
         }
     }
