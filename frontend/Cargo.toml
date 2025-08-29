@@ -21,7 +21,8 @@ wasm-logger = "0.2.0"
 wasm-bindgen = "0.2"
 
 [features]
-default = ["web"]
+default = []
+dev = []
 web = ["dioxus/web"]
 server = ["dioxus/server"]
 

@@ -14,6 +14,7 @@ use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use std::{
     collections::{HashMap, VecDeque},
+    env,
     net::SocketAddr,
     sync::Arc,
 };
@@ -73,7 +74,6 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     let player_id = Uuid::new_v4();
     let (mut ws_sender, mut ws_receiver) = socket.split();
 
-    // Create a channel to send messages to this specific client's WebSocket
     let (tx, mut rx) = mpsc::unbounded_channel();
     state.connections.insert(player_id, tx);
 
@@ -87,8 +87,6 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     });
 
     let recv_state = state.clone();
-
-    // This task handles incoming messages from the WebSocket client
     let mut recv_task = tokio::spawn(async move {
         while let Some(Ok(Message::Text(text))) = ws_receiver.next().await {
             match serde_json::from_str::<ClientToServer>(&text) {
@@ -99,15 +97,12 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
         }
     });
 
-    // Wait for either task to finish (which means the connection is closed)
     tokio::select! {
         _ = (&mut send_task) => recv_task.abort(),
         _ = (&mut recv_task) => send_task.abort(),
     };
 
     info!("Player {} disconnected", player_id);
-    // Cleanup: remove player connection and from any game they were in
-    // This `state` is now valid because we only moved the clone.
     state.connections.remove(&player_id);
     for mut game in state.games.iter_mut() {
         if game.players.remove(&player_id).is_some() {

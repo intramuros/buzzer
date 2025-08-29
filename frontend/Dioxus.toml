@@ -23,3 +23,5 @@ script = []
 
 [web.watcher]
 index_on_404 = true
+cargo-features = ["dev"]
+port = 8080

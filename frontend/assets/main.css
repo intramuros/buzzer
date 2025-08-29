@@ -622,11 +622,34 @@ button:disabled {
     text-align: center;
 }
 .home-section form {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--spacing-md) var(--spacing-sm);
+    align-items: center;
     margin-top: var(--spacing-sm);
 }
+
+.form-field {
+    display: contents; /* This makes the children act as direct grid items */
+}
+
+.form-field label {
+    font-weight: bold;
+    text-align: right;
+}
+
+.form-field input {
+    width: 100%;
+    margin: 0;
+}
+
+.form-button-container {
+    grid-column: 1 / -1; /* Make this container span ALL columns */
+    display: flex; /* Use flexbox to center the button inside */
+    justify-content: center;
+    margin-top: var(--spacing-md);
+}
+
 .error {
     color: #ff4500;
 }
@@ -695,6 +718,51 @@ button:disabled {
         right: 8px;
     }
 }
+
+.timer-container {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    margin: 0 var(--spacing-md);
+}
+
+.timer-idle, .timer-running, .timer-finished {
+    font-family: 'Courier New', Courier, monospace;
+    font-weight: bold;
+    color: var(--text-muted);
+}
+
+.timer-running {
+    color: var(--accent-green);
+}
+
+.timer-finished {
+    color: firebrick;
+}
+
+.timer-start-button {
+    padding: 0.2rem 0.6rem;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
+.player-list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.player-list-header h3 {
+    margin: 0; /* Remove default margin from h3 */
+}
+
+.sort-button {
+    padding: 0.3rem 0.8rem;
+    font-size: 0.8rem;
+    margin: 0;
+}
+
 @media (prefers-color-scheme: light) {
     .player-list-item,
     .file-uploader-container {

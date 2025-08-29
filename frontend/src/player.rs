@@ -107,33 +107,36 @@ pub fn PlayerView() -> Element {
 #[component]
 pub fn PlayerList() -> Element {
     let app_ctx = use_context::<AppContext>();
-    let game_state_guard = app_ctx.game_state.read();
-    let mut players_data = if let Some(game) = game_state_guard.as_ref() {
-        game.player_join_order
-            .iter()
-            .filter_map(|player_id| {
-                game.players
-                    .get(player_id)
-                    .map(|player| (player_id, player))
-            })
-            .filter(|(_, player)| player.name() != HOST)
-            .map(|(player_id, player)| {
-                (
-                    player.name().to_string(),
-                    *game.scores.get(player_id).unwrap_or(&0),
-                )
-            })
-            .collect::<Vec<_>>()
-    } else {
-        vec![]
-    };
-    players_data.sort_by(|p1, p2| p2.1.cmp(&p1.1));
+    let players_data = use_memo(move || {
+        if let Some(game) = app_ctx.game_state.read().as_ref() {
+            let mut players: Vec<_> = game
+                .player_join_order
+                .iter()
+                .filter_map(|player_id| {
+                    game.players
+                        .get(player_id)
+                        .map(|player| (player_id, player))
+                })
+                .filter(|(_, player)| player.name() != HOST)
+                .map(|(player_id, player)| {
+                    (
+                        player.name().to_string(),
+                        *game.scores.get(player_id).unwrap_or(&0),
+                    )
+                })
+                .collect();
+            players.sort_by(|p1, p2| p2.1.cmp(&p1.1));
+            players
+        } else {
+            vec![]
+        }
+    });
 
     rsx! {
         h3 { "Players" }
         ul { class: "player-list",
             // You can now safely iterate.
-            for (player_name, score) in players_data {
+            for (player_name, score) in players_data.read().iter() {
                 li {
                     class: "player-list-item",
                     span { class: "player-name", "{player_name}" }

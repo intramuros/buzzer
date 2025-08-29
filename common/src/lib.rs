@@ -36,12 +36,12 @@ pub struct GameState {
     pub host_id: Uuid,
     pub globally_locked: bool,
     pub buzzer_order: VecDeque<(Uuid, String)>,
-    pub players: PlayersMap, // Using im_rc::HashMap on the frontend
+    pub players: PlayersMap,
     pub scores: HashMap<Uuid, i32>,
     pub player_join_order: Vec<Uuid>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GameStateJson {
     host_id: Uuid,
     locked: bool,

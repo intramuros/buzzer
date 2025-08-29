@@ -107,12 +107,21 @@ fn AppLayout() -> Element {
     // Effect to establish and manage WebSocket connection
     use_effect(move || {
         spawn(async move {
-            let window = web_sys::window().expect("no global `window` exists");
-            let location = window.location();
-            let host = location.host().expect("should have a host");
-            let protocol = location.protocol().expect("should have a protocol");
-            let ws_protocol = if protocol == "https:" { "wss:" } else { "ws:" };
-            let ws_url = format!("{}//{}/ws", ws_protocol, host);
+            let ws_url = {
+                #[cfg(feature = "dev")]
+                {
+                    "ws://localhost:3001/ws"
+                }
+                #[cfg(not(feature = "dev"))]
+                {
+                    let window = web_sys::window().expect("no global `window` exists");
+                    let location = window.location();
+                    let host = location.host().expect("should have a host");
+                    let protocol = location.protocol().expect("should have a protocol");
+                    let ws_protocol = if protocol == "https:" { "wss:" } else { "ws:" };
+                    format!("{}//{}/ws", ws_protocol, host)
+                }
+            };
             let ws = WebSocket::open(&ws_url).expect("Failed to open WebSocket");
             info!("WebSocket connection opened");
             let (tx, mut rx) = ws.split();
@@ -281,7 +290,6 @@ fn Home() -> Element {
                 h2 { "Join Game" }
                 // 1. Wrap your inputs and button in a form tag
                 form {
-                    // 2. Attach your logic to the form's `onsubmit` event
                     onsubmit: on_join_submit,
                     div { class: "form-field",
                         label { r#for: "game_code", "Game Code" }
@@ -304,11 +312,12 @@ fn Home() -> Element {
                             oninput: move |evt| player_name.set(evt.value()),
                         }
                     }
-                    // 3. Change the button to type="submit" and remove onclick
-                    button {
-                        r#type: "submit",
-                        class: "control-button",
-                        "Join Game"
+                    div { class: "form-button-container",
+                        button {
+                            r#type: "submit",
+                            class: "control-button",
+                            "Join Game"
+                        }
                     }
                 }
             }

@@ -3,6 +3,7 @@ use common::*;
 use dioxus::prelude::*;
 use log::info;
 use web_sys::window;
+use uuid::Uuid;
 
 #[derive(Clone, PartialEq)]
 struct HostContext {
@@ -10,19 +11,57 @@ struct HostContext {
     pub score_delta: Signal<i32>,
 }
 
+#[derive(Clone, PartialEq, Copy)]
+enum SortBy {
+    Ascending,
+    Descending,
+}
+
+impl SortBy {
+    fn flip(&self) -> Self {
+        match self {
+            Self::Ascending => Self::Descending,
+            Self::Descending => Self::Ascending
+        }
+    }
+}
+
 #[component]
 pub fn HostView(file_url: Signal<Option<String>>) -> Element {
     let app_ctx = use_context::<AppContext>();
+    let mut sort_by = use_signal(|| SortBy::Ascending);
+    let mut players_data = use_signal(Vec::new);
 
-    // --- Create the Host-specific state ---
     let copied = use_signal(|| false);
     let score_delta = use_signal(|| 10_i32);
     let mut show_settings = use_signal(|| false);
 
-    // --- Provide the new, scoped HostContext ---
     use_context_provider(|| HostContext {
         copied,
         score_delta,
+    });
+
+    use_effect(move || {
+        if let Some(game) = app_ctx.game_state.read().as_ref() {
+            let players: Vec<_> = game
+                .player_join_order
+                .iter()
+                .filter_map(|player_id| {
+                    game.players
+                        .get(player_id)
+                        .map(|player| (player_id, player))
+                })
+                .filter(|(_, player)| player.name() != HOST)
+                .map(|(player_id, player)| {
+                    (
+                        *player_id,
+                        player.name().to_string(),
+                        *game.scores.get(player_id).unwrap_or(&0),
+                    )
+                })
+                .collect();
+            players_data.set(players);
+        }
     });
 
     let on_lock = move |_| {
@@ -47,28 +86,18 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
         }
     };
 
-    // --- Prepare data *before* rendering ---
-    let game_state_guard = app_ctx.game_state.read();
-    let players_data = if let Some(game) = game_state_guard.as_ref() {
-        game.player_join_order
-            .iter()
-            .filter_map(|player_id| {
-                game.players
-                    .get(player_id)
-                    .map(|player| (player_id, player))
-            })
-            .filter(|(_, player)| player.name() != HOST)
-            .map(|(player_id, player)| {
-                (
-                    *player_id,
-                    player.name().to_string(),
-                    *game.scores.get(player_id).unwrap_or(&0),
-                )
-            })
-            .collect::<Vec<_>>()
-    } else {
-        vec![]
+    let on_sort = move |_| {
+        let new_sort_by = sort_by().flip();
+        sort_by.set(new_sort_by);
+
+        let mut current_players = players_data.read().clone();
+        match new_sort_by {
+            SortBy::Ascending => current_players.sort_by_key(|k| k.2),
+            SortBy::Descending => current_players.sort_by_key(|k| std::cmp::Reverse(k.2)),
+        }
+        players_data.set(current_players);
     };
+
     let game_code = (*app_ctx.game_code.read())
         .map(|c| c.to_string())
         .unwrap_or_default();
@@ -84,7 +113,8 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                 // div { class: "splitter" }
             }
             // --- Right Column ---
-            div { class: "host-controls-column",
+            div {
+                class: "host-controls-column",
                 if let Some(game) = app_ctx.game_state.read().as_ref() {
                     div {
                         class: "game-info-container",
@@ -108,64 +138,41 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                                 view_box: "0 0 24 24",
                                 fill: "currentColor",
                                 path {
-                                    d: "M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 \
-                                        l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81\
-                                        C14.33,2.59,14.12,2.4,13.86,2.4h-3.72c-0.26,0-0.47,0.19-0.54,0.41L9.2,5.27\
+                                    d: "M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 
+                                        l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81
+                                        C14.33,2.59,14.12,2.4,13.86,2.4h-3.72c-0.26,0-0.47,0.19-0.54,0.41L9.2,5.27
                                         C8.61,5.51,8.08,5.83,7.58,6.21L5.19,5.25C4.97,5.18,4.72,5.25,4.6,5.47L2.68,8.79
                                         c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.78,11.36,4.76,11.68,4.76,12s0.02,0.64,0.07,0.94l-2.03,1.58
                                         c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94
-                                        l0.4,2.46c0.07,0.22,0.28,0.41,0.54,0.41h3.72c0.26,0,0.47-0.19,0.54-0.41l0.4-2.46c0.59-0.24,1.12-0.56,1.62-0.94
+                                        l0.4,2.46c0.07,0.22,0.28,0.41,0.54,0.41h3.72c0.26,0,0.47-0.19,0.54,0.41l0.4-2.46c0.59-0.24,1.12-0.56,1.62-0.94
                                         l2.39,0.96c0.22,0.07,0.47,0,0.59-0.22l1.92-3.32c0.11-0.20,0.06-0.47-0.12-0.61L19.14,12.94z
                                         M12,15.6 c-1.98,0-3.6-1.62-3.6-3.6s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"
                                 }
                             }
                         }
-                        // MOVED: The FileUploader component is no longer here
                     }
                     if show_settings() {
-                        // MODIFIED: Pass the file_url signal to the settings menu
                         SettingsMenu { is_open: show_settings, file_url }
                     }
                     PlayerBuzzOrderList {}
                     div {
                         class: "player-list-container",
-                        h3 { "Players & Scores" }
+                        div {
+                            class: "player-list-header",
+                            h3 { "Players & Scores" }
+                            button {
+                                class: "control-button sort-button",
+                                onclick: on_sort,
+                                "Sort"
+                            }
+                        }
                         ul {
                             class: "player-list",
-                            for (player_id, player_name, score) in players_data {
-                                li {
-                                    class: "player-list-item",
-                                    span { class: "player-name", "{player_name}" }
-                                    span { class: "score-display", "{score}" }
-                                    div {
-                                        class: "score-buttons-container",
-                                        button {
-                                            class: "score-button",
-                                            onclick: move |_| {
-                                                if let Some(code) = *app_ctx.game_code.read() {
-                                                    app_ctx.send(ClientToServer::UpdateScore {
-                                                        game_code: code,
-                                                        player_id,
-                                                        delta: -(*score_delta.read()),
-                                                    });
-                                                }
-                                            },
-                                            "-"
-                                        }
-                                        button {
-                                            class: "score-button",
-                                            onclick: move |_| {
-                                                if let Some(code) = *app_ctx.game_code.read() {
-                                                    app_ctx.send(ClientToServer::UpdateScore {
-                                                        game_code: code,
-                                                        player_id,
-                                                        delta: *score_delta.read(),
-                                                    });
-                                                }
-                                            },
-                                            "+"
-                                        }
-                                    }
+                            for (player_id, player_name, score) in players_data.read().iter().cloned() {
+                                PlayerListItem {
+                                    player_id: player_id,
+                                    player_name: player_name,
+                                    score: score,
                                 }
                             }
                         }
@@ -177,21 +184,63 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
 }
 
 #[component]
+fn PlayerListItem(player_id: Uuid, player_name: String, score: i32) -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let host_ctx = use_context::<HostContext>();
+
+    rsx! {
+        li {
+            class: "player-list-item",
+            span { class: "player-name", "{player_name}" }
+            span { class: "score-display", "{score}" }
+            div {
+                class: "score-buttons-container",
+                button {
+                    class: "score-button",
+                    onclick: move |_| {
+                        if let Some(code) = *app_ctx.game_code.read() {
+                            app_ctx.send(ClientToServer::UpdateScore {
+                                game_code: code,
+                                player_id: player_id,
+                                delta: *host_ctx.score_delta.read(),
+                            });
+                        }
+                    },
+                    "+"
+                }
+                button {
+                    class: "score-button",
+                    onclick: move |_| {
+                        if let Some(code) = *app_ctx.game_code.read() {
+                            app_ctx.send(ClientToServer::UpdateScore {
+                                game_code: code,
+                                player_id: player_id,
+                                delta: -(*host_ctx.score_delta.read()),
+                            });
+                        }
+                    },
+                    "-"
+                }
+            }
+        }
+    }
+}
+
+#[component]
 pub fn PlayerBuzzOrderList() -> Element {
     let app_ctx = use_context::<AppContext>();
-    let host_ctx = use_context::<HostContext>(); // Get host context for score_delta
     let game_state_guard = app_ctx.game_state.read();
 
     let buzzed_players = if let Some(game) = game_state_guard.as_ref() {
         game.buzzer_order
             .iter()
-            .map(|(player_id, name)| 
+            .map(|(player_id, name)| {
                 (
                     *player_id,
                     name.clone(),
                     *game.scores.get(player_id).unwrap_or(&0),
                 )
-            )
+            })
             .collect::<Vec<_>>()
     } else {
         vec![]
@@ -203,40 +252,10 @@ pub fn PlayerBuzzOrderList() -> Element {
             ol {
                 class: "player-list buzzed-order-list",
                 for (player_id, player_name, score) in buzzed_players {
-                    li {
-                        class: "player-list-item", // Use the same class for styling
-                        span { class: "player-name", "{player_name}" }
-                        span { class: "score-display", "{score}" }
-                        // Add score buttons similar to the main player list
-                        div {
-                            class: "score-buttons-container",
-                            button {
-                                class: "score-button",
-                                onclick: move |_| {
-                                    if let Some(code) = *app_ctx.game_code.read() {
-                                        app_ctx.send(ClientToServer::UpdateScore {
-                                            game_code: code,
-                                            player_id,
-                                            delta: -(*host_ctx.score_delta.read()),
-                                        });
-                                    }
-                                },
-                                "-"
-                            }
-                            button {
-                                class: "score-button",
-                                onclick: move |_| {
-                                    if let Some(code) = *app_ctx.game_code.read() {
-                                        app_ctx.send(ClientToServer::UpdateScore {
-                                            game_code: code,
-                                            player_id,
-                                            delta: *host_ctx.score_delta.read(),
-                                        });
-                                    }
-                                },
-                                "+"
-                            }
-                        }
+                    PlayerListItem {
+                        player_id: player_id,
+                        player_name: player_name,
+                        score: score,
                     }
                 }
             }
@@ -285,7 +304,6 @@ fn CopyButton() -> Element {
     }
 }
 
-// MODIFIED: Component now accepts the file_url signal
 #[component]
 fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Element {
     let mut app_ctx = use_context::<AppContext>();
@@ -337,7 +355,6 @@ fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Elem
                     }
                 }
             }
-            // ADDED: File uploader is now a setting
             div {
                 class: "setting-item",
                 label { r#for: "pdf-upload", "Upload PDF:" }
@@ -355,19 +372,17 @@ fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Elem
     }
 }
 
-// MODIFIED: Added a close button to the viewer
 #[component]
 pub fn FileViewer(file_url: Signal<Option<String>>) -> Element {
     rsx! {
         div {
             class: "pdf-viewer-container",
             if let Some(url) = file_url() {
-                // ADDED: This button will set the file_url to None, effectively closing the viewer
                 button {
                     class: "pdf-close-button",
                     "aria-label": "Close PDF Viewer",
                     onclick: move |_| file_url.set(None),
-                    "×" // A nice 'times' character for the X
+                    "×"
                 }
                 iframe {
                     src: "{url}",
@@ -385,44 +400,40 @@ pub fn FileViewer(file_url: Signal<Option<String>>) -> Element {
 }
 
 #[component]
-fn FileUploader(file_url: Signal<Option<String>>) -> Element {
+fn FileUploader(mut file_url: Signal<Option<String>>) -> Element {
     let mut error_message = use_signal(|| None::<String>);
 
     let on_file_change = move |event: Event<FormData>| {
         spawn(async move {
-            if let Some(file_engine) = event.files() {
-                let files = file_engine.files();
-                if let Some(file_name) = files.first() {
-                    if let Some(bytes) = file_engine.read_file(file_name).await {
-                        let uint8_array =
-                            web_sys::js_sys::Uint8Array::new_with_length(bytes.len() as u32);
-                        for (i, &byte) in bytes.iter().enumerate() {
-                            uint8_array.set_index(i as u32, byte);
-                        }
-                        let array = web_sys::js_sys::Array::new();
-                        array.push(&uint8_array.buffer());
-                        let init = web_sys::BlobPropertyBag::new();
-                        init.set_type("application/pdf");
-                        if let Ok(blob) = web_sys::Blob::new_with_buffer_source_sequence_and_options(
-                            &array, &init,
-                        ) {
-                            if let Ok(url) = web_sys::Url::create_object_url_with_blob(&blob) {
-                                file_url.set(Some(url));
-                                error_message.set(None);
-                            } else {
-                                error_message.set(Some("Failed to create URL".to_string()));
-                            }
-                        } else {
-                            error_message.set(Some("Failed to create Blob".to_string()));
-                        }
-                    } else {
-                        error_message.set(Some("Failed to read file".to_string()));
-                    }
-                } else {
-                    error_message.set(Some("No file selected.".to_string()));
+            let res = async {
+                let files = event.files().ok_or("No files provided")?;
+                let file = files.files().first().ok_or("No file selected")?.to_string();
+                let bytes = files.read_file(&file).await.ok_or("Failed to read file")?;
+
+                let uint8_array = web_sys::js_sys::Uint8Array::new_with_length(bytes.len() as u32);
+                uint8_array.copy_from(&bytes);
+
+                let array = web_sys::js_sys::Array::new();
+                array.push(&uint8_array.buffer());
+
+                let init = web_sys::BlobPropertyBag::new();
+                init.set_type("application/pdf");
+
+                let blob = web_sys::Blob::new_with_buffer_source_sequence_and_options(&array, &init)
+                    .map_err(|e| e.as_string().unwrap_or("Failed to create Blob".to_string()))?;
+
+                web_sys::Url::create_object_url_with_blob(&blob)
+                    .map_err(|e| e.as_string().unwrap_or("Failed to create URL".to_string()))
+            };
+
+            match res.await {
+                Ok(url) => {
+                    file_url.set(Some(url));
+                    error_message.set(None);
                 }
-            } else {
-                error_message.set(Some("No files provided.".to_string()));
+                Err(e) => {
+                    error_message.set(Some(e.to_string()));
+                }
             }
         });
     };
