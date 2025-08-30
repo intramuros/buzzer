@@ -174,14 +174,11 @@ fn AppLayout() -> Element {
                                 }
                                 *app_ctx.game_state.write() = Some(state);
                             }
-                            // --- Add this new match arm ---
                             ServerToClient::PlayerBuzzed {
                                 player_id: _,
                                 player_name,
                             } => {
-                                // Check if the current client is the host
                                 if *app_ctx.is_host.read() {
-                                    // Check if the buzzer list is currently empty.
                                     let is_first_buzz = app_ctx.game_state.read()
                                         .as_ref()
                                         .map_or(false, |gs| gs.buzzer_order.is_empty());
@@ -237,7 +234,7 @@ enum Route {
         #[route("/game/:code")]
         GameRoom { code: usize },
     #[end_layout]
-    // PageNotFound is a catch all route that will match any route and placing the matched segments in the route field
+    // PageNotFound is a catch all route that will match any route
     #[route("/:..route")]
     PageNotFound { route: Vec<String> },
 }

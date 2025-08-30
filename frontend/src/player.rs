@@ -135,7 +135,6 @@ pub fn PlayerList() -> Element {
     rsx! {
         h3 { "Players" }
         ul { class: "player-list",
-            // You can now safely iterate.
             for (player_name, score) in players_data.read().iter() {
                 li {
                     class: "player-list-item",

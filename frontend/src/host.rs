@@ -110,7 +110,6 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                 div { class: "file-viewer-column",
                     FileViewer { file_url }
                 }
-                // div { class: "splitter" }
             }
             // --- Right Column ---
             div {
