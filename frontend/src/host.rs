@@ -2,7 +2,7 @@ use crate::{AppContext, SOUND_OPTIONS};
 use common::*;
 use dioxus::prelude::*;
 use log::info;
-use web_sys::window;
+use web_sys::{window, HtmlAudioElement};
 use uuid::Uuid;
 
 #[derive(Clone, PartialEq)]
@@ -338,6 +338,9 @@ fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Elem
                 select {
                     id: "sound-select",
                     onchange: move |evt| {
+                        if let Ok(audio) = HtmlAudioElement::new_with_src(&evt.value()) {
+                            let _ = audio.play();
+                        }
                         app_ctx.buzzer_sound.set(evt.value());
                     },
                     for (name, path) in SOUND_OPTIONS.iter() {
