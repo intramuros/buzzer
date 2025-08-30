@@ -86,13 +86,36 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
         }
     });
 
+    // --- Heartbeat and Message Receiving Task ---
     let recv_state = state.clone();
     let mut recv_task = tokio::spawn(async move {
-        while let Some(Ok(Message::Text(text))) = ws_receiver.next().await {
-            match serde_json::from_str::<ClientToServer>(&text) {
-                // Use the cloned state here
-                Ok(msg) => handle_c2s_message(msg, player_id, recv_state.clone()).await,
-                Err(e) => warn!("Failed to parse C2S message: {}", e),
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+        loop {
+            tokio::select! {
+                // Handle incoming messages from the client
+                Some(Ok(msg)) = ws_receiver.next() => {
+                    if let Message::Text(text) = msg {
+                        match serde_json::from_str::<ClientToServer>(&text) {
+                            Ok(c2s_msg) => handle_c2s_message(c2s_msg, player_id, recv_state.clone()).await,
+                            Err(e) => warn!("Failed to parse C2S message: {}", e),
+                        }
+                    } else if let Message::Close(_) = msg {
+                        // Client sent a close frame
+                        break;
+                    }
+                },
+                // Send a ping message on a fixed interval
+                _ = interval.tick() => {
+                    let sender = recv_state.connections.get(&player_id);
+                    if let Some(sender) = sender {
+                        if sender.send(Message::Ping(vec![].into())).is_err() {
+                            // If sending fails, the connection is likely closed
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                }
             }
         }
     });
@@ -104,6 +127,7 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
 
     info!("Player {} disconnected", player_id);
     state.connections.remove(&player_id);
+    // Clean up player from any game they were in
     for mut game in state.games.iter_mut() {
         if game.players.remove(&player_id).is_some() {
             info!("Removed player {} from game {}", player_id, game.key());
