@@ -14,6 +14,12 @@ mod host;
 mod player;
 
 static CSS: Asset = asset!("/assets/main.css");
+const SOUND_OPTIONS: [(&'static str, &'static str); 4] = [
+    ("Default Buzzer", "../assets/sounds/ding-101492.mp3"),
+    ("New notification", "../assets/sounds/new-notification-09-352705.mp3"),
+    ("Pop", "../assets/sounds/pop-39222.mp3"),
+    ("Bubble pop", "../assets/sounds/bubble-pop-389501.mp3"),
+];
 
 #[derive(Clone, Copy)]
 struct AppContext {

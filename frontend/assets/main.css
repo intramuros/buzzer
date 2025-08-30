@@ -658,11 +658,15 @@ button:disabled {
         flex-direction: column;
         gap: var(--spacing-md);
         padding: var(--spacing-md);
+        resize: both;
+        overflow: auto;
     }
     .host-controls-column,
     .file-viewer-column {
         max-width: 100%;
         width: 100%;
+        resize: both;
+        overflow: auto;
     }
     .pdf-viewer-container {
         height: 70vh;

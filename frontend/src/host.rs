@@ -1,4 +1,4 @@
-use crate::AppContext;
+use crate::{AppContext, SOUND_OPTIONS};
 use common::*;
 use dioxus::prelude::*;
 use log::info;
@@ -309,12 +309,6 @@ fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Elem
     let mut app_ctx = use_context::<AppContext>();
     let mut host_ctx = use_context::<HostContext>();
 
-    let sound_options = vec![
-        ("Default Buzzer", "../assets/ding-101492.mp3"),
-        ("Ding", "sounds/ding.mp3"),
-        ("Boop", "sounds/boop.mp3"),
-    ];
-
     rsx! {
         div {
             class: "settings-backdrop",
@@ -346,7 +340,7 @@ fn SettingsMenu(is_open: Signal<bool>, file_url: Signal<Option<String>>) -> Elem
                     onchange: move |evt| {
                         app_ctx.buzzer_sound.set(evt.value());
                     },
-                    for (name, path) in sound_options.iter() {
+                    for (name, path) in SOUND_OPTIONS.iter() {
                         option {
                             value: *path,
                             selected: *app_ctx.buzzer_sound.read() == *path,
