@@ -20,6 +20,7 @@ const SOUND_OPTIONS: [(&'static str, &'static str); 4] = [
     ("Pop", "../assets/sounds/pop-39222.mp3"),
     ("Bubble pop", "../assets/sounds/bubble-pop-389501.mp3"),
 ];
+const FAVICON: Asset = asset!("/assets/favicon.svg");
 
 #[derive(Clone, Copy)]
 struct AppContext {
@@ -217,6 +218,7 @@ fn AppLayout() -> Element {
     });
 
     rsx! {
+        document::Link { rel: "icon", href: FAVICON }
         document::Stylesheet { href: CSS }
         div {
             class: "app-container",
@@ -228,6 +230,7 @@ fn AppLayout() -> Element {
 #[derive(Routable, Clone, PartialEq)]
 #[rustfmt::skip]
 enum Route {
+    #[layout(NavBar)]
     #[layout(AppLayout)]
         #[route("/")]
         Home {},
@@ -237,6 +240,16 @@ enum Route {
     // PageNotFound is a catch all route that will match any route and placing the matched segments in the route field
     #[route("/:..route")]
     PageNotFound { route: Vec<String> },
+}
+
+#[component]
+pub fn NavBar() -> Element {
+    rsx! {
+        div { id: "title",
+            h1 { "🚨 Buzzer! " }
+        }
+        Outlet::<Route> {}
+    }
 }
 
 #[component]
@@ -276,7 +289,6 @@ fn Home() -> Element {
     rsx! {
          div {
             class: "home-page",
-            h1 { "Quiz Button" }
             if let Some(err) = (app_ctx.error_message)() {
                 p { class: "error", "{err}" }
             }

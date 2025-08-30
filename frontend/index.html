@@ -1,39 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="utf-8" name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title></title>
 </head>
 <body>
   <div id="main"></div>
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const splitter = document.querySelector('.splitter');
-        const leftPanel = document.querySelector('.file-viewer-column');
-        const rightPanel = document.querySelector('.host-controls-column');
-
-        let isDragging = false;
-
-        splitter.addEventListener('mousedown', function (e) {
-            isDragging = true;
-        });
-
-        document.addEventListener('mousemove', function (e) {
-            if (!isDragging) return;
-
-            const container = splitter.parentElement;
-            const containerRect = container.getBoundingClientRect();
-            const newLeftWidth = e.clientX - containerRect.left;
-            const newRightWidth = containerRect.right - e.clientX;
-
-            leftPanel.style.flex = `0 0 ${newLeftWidth}px`;
-            rightPanel.style.flex = `0 0 ${newRightWidth}px`;
-        });
-
-        document.addEventListener('mouseup', function (e) {
-            isDragging = false;
-        });
-    });
-</script>
 </body>
 </html>

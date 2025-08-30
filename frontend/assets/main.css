@@ -777,39 +777,8 @@ button:disabled {
         color: #333;
     }
 }
-/* .splitter { */
-/*     flex: 0 0 5px; */
-/*     background: #ccc; */
-/*     cursor: col-resize; */
-/* } */
-/* <script> */
-/*     document.addEventListener('DOMContentLoaded', function () { */
-/*         const splitter = document.querySelector('.splitter'); */
-/*         const leftPanel = document.querySelector('.file-viewer-column'); */
-/*         const rightPanel = document.querySelector('.host-controls-column'); */
-/**/
-/*         let isDragging = false; */
-/**/
-/*         splitter.addEventListener('mousedown', function (e) { */
-/*             isDragging = true; */
-/*         }); */
-/**/
-/*         document.addEventListener('mousemove', function (e) { */
-/*             if (!isDragging) return; */
-/**/
-/*             const container = splitter.parentElement; */
-/*             const containerRect = container.getBoundingClientRect(); */
-/*             const newLeftWidth = e.clientX - containerRect.left; */
-/*             const newRightWidth = containerRect.right - e.clientX; */
-/**/
-/*             leftPanel.style.flex = `0 0 ${newLeftWidth}px`; */
-/*             rightPanel.style.flex = `0 0 ${newRightWidth}px`; */
-/*         }); */
-/**/
-/*         document.addEventListener('mouseup', function (e) { */
-/*             isDragging = false; */
-/*         }); */
-/*     }); */
-/* </script> */
-/* "" */
-/**/
+#title {
+    display: flex;
+    justify-content: flex-start;
+    padding-left: 5%; /* Add some padding from the edge */
+}
