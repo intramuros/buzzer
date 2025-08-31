@@ -346,13 +346,11 @@ pub fn GameRoom(code: usize) -> Element {
     let nav = navigator();
     let file_url = use_signal::<Option<String>>(|| None); // Unconditional hook
 
-    // Unconditional effect for handling loading/redirect
+    // Effect to handle loading/redirect if game state isn't loaded promptly
     use_effect(move || {
-        // Only run the timer if the state is initially None
         if app_ctx.game_state.read().is_none() {
             spawn(async move {
                 gloo_timers::future::TimeoutFuture::new(200).await;
-                // Re-check after the delay
                 if app_ctx.game_state.read().is_none() {
                     nav.push(Route::Home {});
                 }
@@ -360,30 +358,23 @@ pub fn GameRoom(code: usize) -> Element {
         }
     });
 
-    // Read the game state and decide what to render.
-    // The borrow from `read()` is scoped to prevent it from outliving the rsx! macro.
-    let is_host_opt = {
-        let game_state_guard = app_ctx.game_state.read();
-        if let Some(game) = game_state_guard.as_ref() {
+    use_effect(move || {
+        if let Some(game) = app_ctx.game_state.read().as_ref() {
             let my_id = *app_ctx.player_id.read();
             let is_host = my_id.is_some() && my_id == Some(game.host_id);
-            app_ctx.is_host.set(is_host);
-            Some(is_host)
-        } else {
-            None
-        }
-    };
-
-    if let Some(is_host) = is_host_opt {
-        rsx! {
-            if is_host {
-                HostView { file_url }
-            } else {
-                PlayerView {}
+            if *app_ctx.is_host.read() != is_host {
+                app_ctx.is_host.set(is_host);
             }
         }
+    });
+
+    if app_ctx.game_state.read().is_some() {
+        if *app_ctx.is_host.read() {
+            rsx! { HostView { file_url } }
+        } else {
+            rsx! { PlayerView {} }
+        }
     } else {
-        // Render a loading message while we wait for the effect to run.
         rsx! {
             div {
                 class: "loading-page",

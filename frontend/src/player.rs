@@ -1,6 +1,6 @@
 use crate::AppContext;
 use common::*;
-use dioxus::prelude::*;
+use dioxus::{document::eval, prelude::*};
 
 #[component]
 pub fn PlayerBuzzOrderList() -> Element {
@@ -30,12 +30,30 @@ pub fn PlayerView() -> Element {
     let app_ctx = use_context::<AppContext>();
     let my_id = *app_ctx.player_id.read();
 
-    let on_buzz = move |_| {
+    // --- Focus the main div on mount ---
+    use_future(move || async move{
+        let eval = eval(
+            r#"
+            setTimeout(() => document.getElementById('player_view_wrapper')?.focus(), 50);
+            "#,
+        );
+        eval.await;
+    });
+
+    // This is the core logic, now without any arguments.
+    let on_buzz = move || {
         if let Some(ref id) = my_id {
-            app_ctx.send(ClientToServer::Buzz {
-                game_code: app_ctx.game_code.read().clone().unwrap(),
-                player_id: *id,
-            });
+            if let Some(game_state) = app_ctx.game_state.read().as_ref() {
+                let i_have_buzzed = my_id.map_or(false, |id| {
+                    game_state.buzzer_order.iter().any(|(player_id, _)| *player_id == id)
+                });
+                if !game_state.globally_locked && !i_have_buzzed {
+                    app_ctx.send(ClientToServer::Buzz {
+                        game_code: app_ctx.game_code.read().clone().unwrap(),
+                        player_id: *id,
+                    });
+                }
+            }
         }
     };
 
@@ -57,9 +75,20 @@ pub fn PlayerView() -> Element {
         } else {
             "".to_string()
         };
+
+        let on_keydown = move |evt: KeyboardEvent| {
+            if evt.key() == Key::Character(" ".to_owned()) {
+                evt.prevent_default();
+                on_buzz(); // Call the logic
+            }
+        };
+
         rsx! {
             div {
                 class: "player-view-wrapper",
+                id: "player_view_wrapper",
+                tabindex: "0",
+                onkeydown: on_keydown,
                 div {
                     class: "player-view-container",
                     div {
@@ -78,7 +107,7 @@ pub fn PlayerView() -> Element {
                         button {
                             class: "buzzer",
                             disabled: locked,
-                            onclick: on_buzz,
+                            onclick: move |_| on_buzz(), // Create a new closure for the event
                             "{buzzer_text}"
                         }
                     }
