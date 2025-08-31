@@ -127,13 +127,33 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
 
     info!("Player {} disconnected", player_id);
     state.connections.remove(&player_id);
-    // Clean up player from any game they were in
-    for mut game in state.games.iter_mut() {
-        if game.players.remove(&player_id).is_some() {
-            info!("Removed player {} from game {}", player_id, game.key());
-            game.player_join_order.retain(|&id| id != player_id);
+
+    let mut game_to_cleanup: Option<usize> = None;
+    let mut game_to_update: Option<usize> = None;
+
+    if let Some(game_ref) = state.games.iter().find(|g| g.players.contains_key(&player_id)) {
+        let game_code = *game_ref.key();
+        if let Some(mut game) = state.games.get_mut(&game_code) {
+            // Remove the player
+            game.players.remove(&player_id);
+            game.player_join_order.retain(|id| id != &player_id);
+            info!("Removed player {} from game {}", player_id, game_code);
+
+            // Decide whether to clean up the game or just update it
+            if game.host_id == player_id || game.players.is_empty() {
+                game_to_cleanup = Some(game_code);
+            } else {
+                game_to_update = Some(game_code);
+            }
+        }
+    }
+
+    if let Some(game_code) = game_to_cleanup {
+        info!("Game {} is empty or host left, removing.", game_code);
+        state.games.remove(&game_code);
+    } else if let Some(game_code) = game_to_update {
+        if let Some(game) = state.games.get(&game_code) {
             broadcast_state_update(&game, &state).await;
-            break;
         }
     }
 }
