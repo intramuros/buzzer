@@ -29,9 +29,16 @@ pub enum ClientToServer {
         player_id: Uuid,
         delta: i32,
     },
-    // StartCountDown {
-    //     countdown: usize
-    // },
+    StartCountdown {
+        game_code: usize,
+        time_limit: u32,
+    },
+    PauseTimer {
+        game_code: usize,
+    },
+    ResumeTimer {
+        game_code: usize,
+    },
 }
 
 // Messages from Server to Client
@@ -58,7 +65,10 @@ pub enum ServerToClient {
         player_id: Uuid,
         player_name: String,
     },
-    // StartCountDown {
-    //     countdown: usize
-    // },
+    CountdownStarted {
+        time_limit: u32,
+    },
+    TimerPaused {
+        paused: bool,
+    },
 }

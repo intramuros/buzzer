@@ -42,6 +42,7 @@ pub struct GameState {
     pub players: PlayersMap,
     pub scores: HashMap<Uuid, i32>,
     pub player_join_order: Vec<Uuid>,
+    pub time_limit: Option<u32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -52,6 +53,7 @@ pub struct GameStateJson {
     players: HashMap<Uuid, Actor>,
     scores: HashMap<Uuid, i32>,
     player_join_order: Vec<Uuid>,
+    time_limit: Option<u32>,
 }
 
 impl GameState {
@@ -63,6 +65,7 @@ impl GameState {
             players: self.players.clone().into_iter().collect(),
             scores: self.scores.clone(),
             player_join_order: self.player_join_order.clone(),
+            time_limit: self.time_limit,
         }
     }
 }
@@ -76,7 +79,7 @@ impl From<GameStateJson> for GameState {
             players: DashMap::from_iter(json.players.into_iter()),
             scores: json.scores,
             player_join_order: json.player_join_order,
+            time_limit: json.time_limit,
         }
     }
 }
-

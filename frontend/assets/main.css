@@ -782,3 +782,10 @@ button:disabled {
     justify-content: flex-start;
     padding-left: 5%; /* Add some padding from the edge */
 }
+
+.buzzed-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+}

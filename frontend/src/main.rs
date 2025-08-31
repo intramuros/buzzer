@@ -12,6 +12,7 @@ use web_sys::HtmlAudioElement;
 
 mod host;
 mod player;
+mod timer;
 
 static CSS: Asset = asset!("/assets/main.css");
 const SOUND_OPTIONS: [(&'static str, &'static str); 4] = [
@@ -33,6 +34,7 @@ struct AppContext {
     locally_locked: Signal<bool>,
     buzzer_sound: Signal<String>,
     is_host: Signal<bool>,
+    time_limit: Signal<Option<u32>>,
 }
 
 impl fmt::Debug for AppContext {
@@ -96,6 +98,7 @@ fn AppLayout() -> Element {
     let locally_locked = use_signal::<bool>(|| false);
     let buzzer_sound = use_signal(|| "../assets/ding-101492.mp3".to_string());
     let is_host = use_signal(|| false);
+    let time_limit = use_signal::<Option<u32>>(|| Some(5));
 
     // Provide the context to all child components
     let mut app_ctx = use_context_provider(|| AppContext {
@@ -108,6 +111,7 @@ fn AppLayout() -> Element {
         locally_locked,
         buzzer_sound,
         is_host,
+        time_limit,
     });
 
     let nav = navigator();
@@ -202,6 +206,10 @@ fn AppLayout() -> Element {
                                     }
                                 }
                             }
+                            ServerToClient::CountdownStarted { time_limit }  => {
+                                // start counting down in the timer component
+                            }
+                            ServerToClient::TimerPaused { paused } => {}
                             ServerToClient::Error { message } => {
                                 *app_ctx.error_message.write() = Some(message);
                             }
@@ -362,9 +370,7 @@ pub fn GameRoom(code: usize) -> Element {
         if let Some(game) = app_ctx.game_state.read().as_ref() {
             let my_id = *app_ctx.player_id.read();
             let is_host = my_id.is_some() && my_id == Some(game.host_id);
-            if *app_ctx.is_host.read() != is_host {
-                app_ctx.is_host.set(is_host);
-            }
+            app_ctx.is_host.set(is_host);
         }
     });
 

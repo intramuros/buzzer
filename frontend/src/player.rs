@@ -1,9 +1,10 @@
-use crate::AppContext;
+use crate::{AppContext, NavBar, timer::Timer};
 use common::*;
+use log::warn;
 use dioxus::{document::eval, prelude::*};
 
 #[component]
-pub fn PlayerBuzzOrderList() -> Element {
+pub fn PlayerBuzzOrderList(children: Element) -> Element {
     let app_ctx = use_context::<AppContext>();
     let game_state_guard = app_ctx.game_state.read();
     let players_data = if let Some(game) = game_state_guard.as_ref() {
@@ -12,7 +13,29 @@ pub fn PlayerBuzzOrderList() -> Element {
         vec![]
     };
     rsx! {
-        h3 { "Buzzed" }
+        div {
+            class: "buzzed-header",
+            div {
+                h3 { "Buzzed" }
+            }
+            div {
+                { children }
+            }
+            div {
+                button {
+                    class: "control-button",
+                    onclick: move |_| {
+                        if let Some(code) = *app_ctx.game_code.read() {
+                            app_ctx.send(ClientToServer::StartCountdown {
+                                game_code: code,
+                                time_limit: 10,
+                            });
+                        }
+                    },
+                    "Start Timer"
+                }
+            }
+        }
         if !players_data.is_empty() {
             ol { class: "player-list buzzed-order-list",
                 for (_, player_name) in players_data {
@@ -31,13 +54,15 @@ pub fn PlayerView() -> Element {
     let my_id = *app_ctx.player_id.read();
 
     // --- Focus the main div on mount ---
-    use_future(move || async move{
+    use_future(move || async move {
         let eval = eval(
             r#"
             setTimeout(() => document.getElementById('player_view_wrapper')?.focus(), 50);
             "#,
         );
-        eval.await;
+        if let Err(e) = eval.await {
+            warn!("Couldn't focus: {e}");
+        }
     });
 
     // This is the core logic, now without any arguments.
@@ -114,7 +139,11 @@ pub fn PlayerView() -> Element {
                 }
                 div {
                     class: "player-lists-wrapper",
-                    PlayerBuzzOrderList {},
+                    PlayerBuzzOrderList {
+                        if let Some(time_limit) = app_ctx.time_limit.read().clone() {
+                            Timer { time_limit: time_limit }
+                        }
+                    },
                     PlayerList {}
                 }
             }

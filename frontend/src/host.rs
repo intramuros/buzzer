@@ -1,4 +1,4 @@
-use crate::{AppContext, SOUND_OPTIONS};
+use crate::{player::PlayerBuzzOrderList, AppContext, NavBar, SOUND_OPTIONS, timer::Timer};
 use common::*;
 use dioxus::prelude::*;
 use log::info;
@@ -103,6 +103,7 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
         .unwrap_or_default();
 
     rsx! {
+        NavBar {},
         div {
             class: "host-view-container",
             // --- Left Column ---
@@ -153,7 +154,11 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                     if show_settings() {
                         SettingsMenu { is_open: show_settings, file_url }
                     }
-                    PlayerBuzzOrderList {}
+                    PlayerBuzzOrderList {
+                        if let Some(time_limit) = app_ctx.time_limit.read().clone() {
+                            Timer { time_limit: time_limit }
+                        }
+                    }
                     div {
                         class: "player-list-container",
                         div {
@@ -219,43 +224,6 @@ fn PlayerListItem(player_id: Uuid, player_name: String, score: i32) -> Element {
                         }
                     },
                     "-"
-                }
-            }
-        }
-    }
-}
-
-#[component]
-pub fn PlayerBuzzOrderList() -> Element {
-    let app_ctx = use_context::<AppContext>();
-    let game_state_guard = app_ctx.game_state.read();
-
-    let buzzed_players = if let Some(game) = game_state_guard.as_ref() {
-        game.buzzer_order
-            .iter()
-            .map(|(player_id, name)| {
-                (
-                    *player_id,
-                    name.clone(),
-                    *game.scores.get(player_id).unwrap_or(&0),
-                )
-            })
-            .collect::<Vec<_>>()
-    } else {
-        vec![]
-    };
-
-    rsx! {
-        h3 { "Buzzed" }
-        if !buzzed_players.is_empty() {
-            ol {
-                class: "player-list buzzed-order-list",
-                for (player_id, player_name, score) in buzzed_players {
-                    PlayerListItem {
-                        player_id: player_id,
-                        player_name: player_name,
-                        score: score,
-                    }
                 }
             }
         }

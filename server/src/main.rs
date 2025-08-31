@@ -174,6 +174,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                 players,
                 scores: HashMap::new(),
                 player_join_order: vec![sender_id],
+                time_limit: None,
             };
 
             info!("Game created: {} by player {}", game_code, sender_id);
@@ -190,7 +191,6 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
             game_code,
             mut player_name,
         } => {
-            // Trim whitespace from the name
             player_name = player_name.trim().to_string();
 
             if player_name.is_empty() {
@@ -203,7 +203,6 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
 
 
             if let Some(mut game) = state.games.get_mut(&game_code) {
-                // --- Check for duplicate names ---
                 let name_exists = game.players.iter().any(|p| p.name() == player_name);
                 if name_exists {
                     let error_msg = ServerToClient::Error {
@@ -295,6 +294,29 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                 }
             }
         }
+        ClientToServer::StartCountdown { game_code, time_limit } => {
+            if let Some(mut game) = state.games.get_mut(&game_code) {
+                if game.host_id == sender_id {
+                    game.time_limit = Some(time_limit);
+                    broadcast_start_countdown(&game, &state, time_limit).await;
+                    broadcast_timer_paused(&game, &state, false).await;
+                }
+            }
+        }
+        ClientToServer::PauseTimer { game_code } => {
+            if let Some(game) = state.games.get(&game_code) {
+                if game.host_id == sender_id {
+                    broadcast_timer_paused(&game, &state, true).await;
+                }
+            }
+        }
+        ClientToServer::ResumeTimer { game_code } => {
+            if let Some(game) = state.games.get(&game_code) {
+                if game.host_id == sender_id {
+                    broadcast_timer_paused(&game, &state, false).await;
+                }
+            }
+        }
     }
 }
 
@@ -313,6 +335,22 @@ async fn broadcast_state_update(game: &GameState, state: &SharedState) {
     let update_msg = ServerToClient::GameStateUpdate {
         game_state: game.to_json(),
     };
+    for player_ref in game.players.iter() {
+        let player_id = player_ref.id();
+        send_to_player(player_id, &update_msg, state).await;
+    }
+}
+
+async fn broadcast_start_countdown(game: &GameState, state: &SharedState, time_limit: u32) {
+    let update_msg = ServerToClient::CountdownStarted { time_limit };
+    for player_ref in game.players.iter() {
+        let player_id = player_ref.id();
+        send_to_player(player_id, &update_msg, state).await;
+    }
+}
+
+async fn broadcast_timer_paused(game: &GameState, state: &SharedState, paused: bool) {
+    let update_msg = ServerToClient::TimerPaused { paused };
     for player_ref in game.players.iter() {
         let player_id = player_ref.id();
         send_to_player(player_id, &update_msg, state).await;
