@@ -18,23 +18,23 @@ pub fn PlayerBuzzOrderList(children: Element) -> Element {
             div {
                 h3 { "Buzzed" }
             }
-            div {
-                { children }
-            }
-            div {
-                button {
-                    class: "control-button",
-                    onclick: move |_| {
-                        if let Some(code) = *app_ctx.game_code.read() {
-                            app_ctx.send(ClientToServer::StartCountdown {
-                                game_code: code,
-                                time_limit: 10,
-                            });
-                        }
-                    },
-                    "Start Timer"
-                }
-            }
+            // div {
+            //     { children }
+            // }
+            // div {
+            //     button {
+            //         class: "control-button",
+            //         onclick: move |_| {
+            //             if let Some(code) = *app_ctx.game_code.read() {
+            //                 app_ctx.send(ClientToServer::StartCountdown {
+            //                     game_code: code,
+            //                     time_limit: 10,
+            //                 });
+            //             }
+            //         },
+            //         "Start Timer"
+            //     }
+            // }
         }
         if !players_data.is_empty() {
             ol { class: "player-list buzzed-order-list",
@@ -140,9 +140,9 @@ pub fn PlayerView() -> Element {
                 div {
                     class: "player-lists-wrapper",
                     PlayerBuzzOrderList {
-                        if let Some(time_limit) = app_ctx.time_limit.read().clone() {
-                            Timer { time_limit: time_limit }
-                        }
+                        // if let Some(time_limit) = app_ctx.time_limit.read().clone() {
+                        //     Timer { time_limit: time_limit }
+                        // }
                     },
                     PlayerList {}
                 }

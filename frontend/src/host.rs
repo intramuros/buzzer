@@ -1,4 +1,4 @@
-use crate::{player::PlayerBuzzOrderList, AppContext, NavBar, SOUND_OPTIONS, timer::Timer};
+use crate::{player::PlayerBuzzOrderList, AppContext, SOUND_OPTIONS, timer::Timer};
 use common::*;
 use dioxus::prelude::*;
 use log::info;
@@ -103,7 +103,6 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
         .unwrap_or_default();
 
     rsx! {
-        NavBar {},
         div {
             class: "host-view-container",
             // --- Left Column ---
@@ -155,9 +154,9 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                         SettingsMenu { is_open: show_settings, file_url }
                     }
                     PlayerBuzzOrderList {
-                        if let Some(time_limit) = app_ctx.time_limit.read().clone() {
-                            Timer { time_limit: time_limit }
-                        }
+                        // if let Some(time_limit) = app_ctx.time_limit.read().clone() {
+                        //     Timer { time_limit: time_limit }
+                        // }
                     }
                     div {
                         class: "player-list-container",

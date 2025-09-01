@@ -14,7 +14,6 @@ use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
 use std::{
     collections::{HashMap, VecDeque},
-    env,
     net::SocketAddr,
     sync::Arc,
 };
@@ -92,7 +91,6 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
         loop {
             tokio::select! {
-                // Handle incoming messages from the client
                 Some(Ok(msg)) = ws_receiver.next() => {
                     if let Message::Text(text) = msg {
                         match serde_json::from_str::<ClientToServer>(&text) {
@@ -100,11 +98,9 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
                             Err(e) => warn!("Failed to parse C2S message: {}", e),
                         }
                     } else if let Message::Close(_) = msg {
-                        // Client sent a close frame
                         break;
                     }
                 },
-                // Send a ping message on a fixed interval
                 _ = interval.tick() => {
                     let sender = recv_state.connections.get(&player_id);
                     if let Some(sender) = sender {
@@ -128,32 +124,34 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
     info!("Player {} disconnected", player_id);
     state.connections.remove(&player_id);
 
-    let mut game_to_cleanup: Option<usize> = None;
-    let mut game_to_update: Option<usize> = None;
+    let game_code_to_process: Option<usize> = state
+        .games
+        .iter()
+        .find(|g| g.players.contains_key(&player_id))
+        .map(|g| *g.key());
 
-    if let Some(game_ref) = state.games.iter().find(|g| g.players.contains_key(&player_id)) {
-        let game_code = *game_ref.key();
-        if let Some(mut game) = state.games.get_mut(&game_code) {
-            // Remove the player
+    if let Some(game_code) = game_code_to_process {
+        let should_remove_game = {
+            let mut game = state.games.get_mut(&game_code).unwrap();
             game.players.remove(&player_id);
             game.player_join_order.retain(|id| id != &player_id);
             info!("Removed player {} from game {}", player_id, game_code);
 
-            // Decide whether to clean up the game or just update it
             if game.host_id == player_id || game.players.is_empty() {
-                game_to_cleanup = Some(game_code);
+                true
             } else {
-                game_to_update = Some(game_code);
+                let game_clone = game.clone();
+                let state_clone = state.clone();
+                tokio::spawn(async move {
+                    broadcast_state_update(&game_clone, &state_clone).await;
+                });
+                false
             }
-        }
-    }
+        };
 
-    if let Some(game_code) = game_to_cleanup {
-        info!("Game {} is empty or host left, removing.", game_code);
-        state.games.remove(&game_code);
-    } else if let Some(game_code) = game_to_update {
-        if let Some(game) = state.games.get(&game_code) {
-            broadcast_state_update(&game, &state).await;
+        if should_remove_game {
+            info!("Game {} is empty or host left, removing.", game_code);
+            state.games.remove(&game_code);
         }
     }
 }
