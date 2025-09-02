@@ -1,4 +1,4 @@
-use crate::{player::PlayerBuzzOrderList, AppContext, SOUND_OPTIONS, timer::Timer};
+use crate::{AppContext, SOUND_OPTIONS, timer::Timer};
 use common::*;
 use dioxus::prelude::*;
 use log::info;
@@ -53,10 +53,12 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                 })
                 .filter(|(_, player)| player.name() != HOST)
                 .map(|(player_id, player)| {
+                    let is_disconnected = matches!(*player, Actor::Disconnected { .. });
                     (
                         *player_id,
                         player.name().to_string(),
                         *game.scores.get(player_id).unwrap_or(&0),
+                        is_disconnected,
                     )
                 })
                 .collect();
@@ -153,10 +155,10 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                     if show_settings() {
                         SettingsMenu { is_open: show_settings, file_url }
                     }
-                    PlayerBuzzOrderList {
-                        // if let Some(time_limit) = app_ctx.time_limit.read().clone() {
-                        //     Timer { time_limit: time_limit }
-                        // }
+                    PlayerBuzzOrderListHost {
+                        if let Some(time_limit) = app_ctx.time_limit.read().clone() {
+                            Timer { time_limit: time_limit }
+                        }
                     }
                     div {
                         class: "player-list-container",
@@ -171,11 +173,12 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                         }
                         ul {
                             class: "player-list",
-                            for (player_id, player_name, score) in players_data.read().iter().cloned() {
+                            for (player_id, player_name, score, is_disconnected) in players_data.read().iter().cloned() {
                                 PlayerListItem {
                                     player_id: player_id,
                                     player_name: player_name,
                                     score: score,
+                                    is_disconnected: is_disconnected,
                                 }
                             }
                         }
@@ -187,13 +190,18 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
 }
 
 #[component]
-fn PlayerListItem(player_id: Uuid, player_name: String, score: i32) -> Element {
+pub fn PlayerListItem(player_id: Uuid, player_name: String, score: i32, is_disconnected: bool) -> Element {
     let app_ctx = use_context::<AppContext>();
     let host_ctx = use_context::<HostContext>();
+    let li_class = if is_disconnected {
+        "player-list-item disconnected"
+    } else {
+        "player-list-item"
+    };
 
     rsx! {
         li {
-            class: "player-list-item",
+            class: li_class,
             span { class: "player-name", "{player_name}" }
             span { class: "score-display", "{score}" }
             div {
@@ -413,6 +421,59 @@ fn FileUploader(mut file_url: Signal<Option<String>>) -> Element {
             }
             if let Some(err) = error_message() {
                 p { class: "error-message", "{err}" }
+            }
+        }
+    }
+}
+
+#[component]
+pub fn PlayerBuzzOrderListHost(children: Element) -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let order: Vec<_> = if let Some(ref game_state) = *app_ctx.game_state.read() {
+        game_state.buzzer_order
+            .iter()
+            .filter_map(|p| {
+                game_state.scores.get(&p.0).map(|score| (p.0, p.1.clone(), score.clone(), false))
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+
+    rsx! {
+        div {
+            class: "buzzed-header",
+            div {
+                h3 { "Buzzed" }
+            }
+            div {
+                { children }
+            }
+            div {
+                button {
+                    class: "control-button",
+                    onclick: move |_| {
+                        if let Some(code) = *app_ctx.game_code.read() {
+                            app_ctx.send(ClientToServer::StartCountdown {
+                                game_code: code,
+                                time_limit: 10,
+                            });
+                        }
+                    },
+                    "Start Timer"
+                }
+            }
+        }
+        if !order.is_empty() {
+            ol { class: "player-list buzzed-order-list",
+                for (player_id, player_name, score, is_disconnected) in order {
+                    PlayerListItem {
+                        player_id: player_id,
+                        player_name: player_name,
+                        score: score,
+                        is_disconnected: is_disconnected,
+                    }
+                }
             }
         }
     }

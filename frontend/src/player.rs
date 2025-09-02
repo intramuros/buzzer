@@ -1,4 +1,4 @@
-use crate::{AppContext, NavBar, timer::Timer};
+use crate::{host::PlayerListItem, timer::Timer, AppContext, NavBar};
 use common::*;
 use log::warn;
 use dioxus::{document::eval, prelude::*};
@@ -140,9 +140,9 @@ pub fn PlayerView() -> Element {
                 div {
                     class: "player-lists-wrapper",
                     PlayerBuzzOrderList {
-                        // if let Some(time_limit) = app_ctx.time_limit.read().clone() {
-                        //     Timer { time_limit: time_limit }
-                        // }
+                        if let Some(time_limit) = app_ctx.time_limit.read().clone() {
+                            Timer { time_limit: time_limit }
+                        }
                     },
                     PlayerList {}
                 }

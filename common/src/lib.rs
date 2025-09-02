@@ -13,6 +13,7 @@ pub static HOST: &'static str = "HOST";
 pub enum Actor {
     Host { id: Uuid },
     Player { id: Uuid, name: String },
+    Disconnected { id: Uuid, name: String },
 }
 
 impl Actor {
@@ -20,6 +21,7 @@ impl Actor {
         match self {
             Self::Host { .. } => HOST,
             Self::Player { name, .. } => name,
+            Self::Disconnected { name, .. } => name,
         }
     }
 
@@ -27,6 +29,7 @@ impl Actor {
         match self {
             Self::Host { id } => *id,
             Self::Player { id, .. } => *id,
+            Self::Disconnected { id, .. } => *id,
         }
     }
 }
