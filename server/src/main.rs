@@ -136,28 +136,30 @@ async fn handle_socket(socket: WebSocket, state: SharedState) {
         .map(|g| *g.key());
 
     if let Some(game_code) = game_code_to_process {
-        let should_remove_game = {
-            let mut game = state.games.get_mut(&game_code).unwrap();
-            game.players.remove(&player_id);
-            game.player_join_order.retain(|id| id != &player_id);
-            info!("Removed player {} from game {}", player_id, game_code);
+        let mut game = state.games.get_mut(&game_code).unwrap();
 
-            if game.host_id == player_id || game.players.is_empty() {
-                true
-            } else {
-                let game_clone = game.clone();
-                let state_clone = state.clone();
-                tokio::spawn(async move {
-                    broadcast_state_update(&game_clone, &state_clone).await;
-                });
-                false
-            }
-        };
-
-        if should_remove_game {
-            info!("Game {} is empty or host left, removing.", game_code);
+        // If the host disconnects, remove the game entirely
+        if game.host_id == player_id {
+            info!("Host disconnected, removing game {}", game_code);
             state.games.remove(&game_code);
+            return;
         }
+
+        // If a player disconnects, update their state
+        if let Some(mut actor) = game.players.get_mut(&player_id) {
+            let player_name = actor.name().to_string();
+            *actor = Actor::Disconnected {
+                id: player_id,
+                name: player_name,
+            };
+            info!("Player {} disconnected from game {}", player_id, game_code);
+        }
+
+        let game_clone = game.clone();
+        let state_clone = state.clone();
+        tokio::spawn(async move {
+            broadcast_state_update(&game_clone, &state_clone).await;
+        });
     }
 }
 
