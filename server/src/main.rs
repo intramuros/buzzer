@@ -7,8 +7,8 @@ use axum::{
     routing::get,
     Router,
 };
-use tower_http::services::ServeDir;
 use common::*;
+use configuration::get_configuration;
 use dashmap::DashMap;
 use futures_util::{SinkExt, StreamExt};
 use rand::Rng;
@@ -18,6 +18,7 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::mpsc;
+use tower_http::services::ServeDir;
 use tower_http::trace::TraceLayer;
 use tower_http::{
     cors::{Any, CorsLayer},
@@ -25,6 +26,8 @@ use tower_http::{
 };
 use tracing::{info, warn};
 use uuid::Uuid;
+
+mod configuration;
 
 // Holds all game states and player connections
 #[derive(Default)]
@@ -44,9 +47,11 @@ async fn main() {
 
     let cors = CorsLayer::new().allow_origin(Any).allow_methods(Any);
 
+    let configuration = get_configuration().expect("Failed to read configuration.");
+
     let app = Router::new()
         .route("/ws", get(ws_handler))
-        .fallback_service(ServeDir::new("./dist"))
+        .fallback_service(ServeDir::new(configuration.frontend_path))
         .with_state(state)
         .layer(
             TraceLayer::new_for_http()
@@ -54,8 +59,8 @@ async fn main() {
         )
         .layer(cors);
 
-    let host = std::env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
-    let port = std::env::var("PORT").unwrap_or_else(|_| "3001".to_string());
+    let host = configuration.host;
+    let port = configuration.application_port;
     let addr_str = format!("{}:{}", host, port);
     let addr: SocketAddr = addr_str.parse().expect("Invalid address format");
 
@@ -199,7 +204,6 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                 return;
             }
 
-
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 let name_exists = game.players.iter().any(|p| p.name() == player_name);
                 if name_exists {
@@ -283,7 +287,7 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 if game.host_id == sender_id {
                     let score = game.scores.entry(player_id).or_insert(0);
-                    *score += delta; 
+                    *score += delta;
                     info!(
                         "Host {} updated score for player {} to {}",
                         sender_id, player_id, *score
@@ -292,7 +296,10 @@ async fn handle_c2s_message(msg: ClientToServer, sender_id: Uuid, state: SharedS
                 }
             }
         }
-        ClientToServer::StartCountdown { game_code, time_limit } => {
+        ClientToServer::StartCountdown {
+            game_code,
+            time_limit,
+        } => {
             if let Some(mut game) = state.games.get_mut(&game_code) {
                 if game.host_id == sender_id {
                     game.time_limit = Some(time_limit);
