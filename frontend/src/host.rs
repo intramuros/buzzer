@@ -119,8 +119,9 @@ pub fn HostView(file_url: Signal<Option<String>>) -> Element {
                 if let Some(game) = app_ctx.game_state.read().as_ref() {
                     div {
                         class: "game-info-container",
-                        p { class: "game-info", "Game Code: {game_code}" }
+                        p { class: "game-info", "Game Id: {game_code}" }
                         CopyButton {}
+                        CreateLink {}
                     }
                     div {
                         class: "host-controls",
@@ -238,6 +239,47 @@ pub fn PlayerListItem(player_id: Uuid, player_name: String, score: i32, is_disco
 }
 
 #[component]
+fn CreateLink() -> Element {
+    let app_ctx = use_context::<AppContext>();
+    let mut host_ctx = use_context::<HostContext>();
+
+    let copy_to_clipboard = move |_| {
+        if let Some(code) = *app_ctx.game_code.read() {
+            if let Some(window) = window() {
+                let clipboard = window.navigator().clipboard();
+                if clipboard.is_undefined() {
+                    log::warn!("Clipboard API not available. Ensure you are on HTTPS.");
+                } else {
+                    let link = format!("{}/game/{}", app_ctx.url, code);
+                    let _ = clipboard.write_text(&link);
+                    host_ctx.copied.set(true);
+                    spawn(async move {
+                        gloo_timers::future::TimeoutFuture::new(2000).await;
+                        host_ctx.copied.set(false);
+                    });
+                }
+            } else {
+                info!("Window not available");
+            }
+        }
+    };
+
+    let button_text = if *host_ctx.copied.read() {
+        "Copied!"
+    } else {
+        "Copy link"
+    };
+    rsx! {
+        button {
+            class: "copy-button",
+            onclick: copy_to_clipboard,
+            aria_label: "Create game link",
+            "{button_text}"
+        }
+    }
+}
+
+#[component]
 fn CopyButton() -> Element {
     let app_ctx = use_context::<AppContext>();
     let mut host_ctx = use_context::<HostContext>();
@@ -265,7 +307,7 @@ fn CopyButton() -> Element {
     let button_text = if *host_ctx.copied.read() {
         "Copied!"
     } else {
-        "Copy"
+        "Copy Game Id"
     };
 
     rsx! {

@@ -35,6 +35,7 @@ struct AppContext {
     buzzer_sound: Signal<String>,
     is_host: Signal<bool>,
     time_limit: Signal<Option<u32>>,
+    url: Signal<String>,
 }
 
 impl fmt::Debug for AppContext {
@@ -99,6 +100,7 @@ fn AppLayout() -> Element {
     let buzzer_sound = use_signal(|| "../assets/ding-101492.mp3".to_string());
     let is_host = use_signal(|| false);
     let time_limit = use_signal::<Option<u32>>(|| Some(5));
+    let url = use_signal::<String>(|| "".to_owned());
 
     // Provide the context to all child components
     let mut app_ctx = use_context_provider(|| AppContext {
@@ -112,16 +114,17 @@ fn AppLayout() -> Element {
         buzzer_sound,
         is_host,
         time_limit,
+        url
     });
 
     let nav = navigator();
     // Effect to establish and manage WebSocket connection
     use_effect(move || {
         spawn(async move {
-            let ws_url = {
+            let (url, ws_url) = {
                 #[cfg(feature = "dev")]
                 {
-                    "ws://localhost:3001/ws"
+                    ("localhost:8080", "ws://localhost:3001/ws")
                 }
                 #[cfg(not(feature = "dev"))]
                 {
@@ -130,13 +133,14 @@ fn AppLayout() -> Element {
                     let host = location.host().expect("should have a host");
                     let protocol = location.protocol().expect("should have a protocol");
                     let ws_protocol = if protocol == "https:" { "wss:" } else { "ws:" };
-                    format!("{}//{}/ws", ws_protocol, host)
+                    (host.clone(), format!("{}//{}/ws", ws_protocol, host))
                 }
             };
             let ws = WebSocket::open(&ws_url).expect("Failed to open WebSocket");
             info!("WebSocket connection opened");
             let (tx, mut rx) = ws.split();
             *app_ctx.ws_tx.write() = Some(tx);
+            *app_ctx.url.write() = url.to_owned();
             // This loop listens for messages from the server
             while let Some(Ok(Message::Text(text))) = rx.next().await {
                 match serde_json::from_str::<ServerToClient>(&text) {
@@ -240,11 +244,72 @@ enum Route {
         #[route("/")]
         Home {},
         #[route("/game/:code")]
+        JoinPage { code: usize },
+        #[route("/gameroom/:code")]
         GameRoom { code: usize },
     #[end_layout]
     // PageNotFound is a catch all route that will match any route
     #[route("/:..route")]
     PageNotFound { route: Vec<String> },
+}
+
+#[component]
+pub fn JoinPage(code: usize) -> Element {
+    let mut app_ctx = use_context::<AppContext>();
+    let mut player_name = use_signal(String::new);
+    let nav = navigator();
+
+    let on_join_submit = move |_| {
+        let name = player_name.read().trim().to_string();
+        if name.is_empty() || name.len() > 12 {
+            *app_ctx.error_message.write() =
+                Some("Name must be between 1 and 12 characters.".to_string());
+            return;
+        }
+
+        if name.to_lowercase() == "host" {
+            *app_ctx.error_message.write() =
+                Some("The name 'Host' is reserved.".to_string());
+            return;
+        }
+
+        *app_ctx.game_code.write() = Some(code);
+        app_ctx.send(ClientToServer::JoinGame {
+            game_code: code,
+            player_name: name,
+        });
+    };
+
+    rsx! {
+        div {
+            class: "join-page",
+            if let Some(err) = (app_ctx.error_message)() {
+                p { class: "error", "{err}" }
+            }
+            h2 { "Joining Game: {code}" }
+            form {
+                onsubmit: on_join_submit,
+                div { class: "form-field",
+                    label { r#for: "player_name", "Your Name" }
+                    input {
+                        id: "player_name",
+                        name: "player_name",
+                        required: true,
+                        maxlength: 16,
+                        value: "{player_name}",
+                        oninput: move |evt| player_name.set(evt.value()),
+                    }
+                }
+                div { class: "form-button-container",
+                    button {
+                        r#type: "submit",
+                        class: "control-button",
+                        "Join Game"
+                    }
+                }
+            }
+        }
+    }
 }
 
 #[component]

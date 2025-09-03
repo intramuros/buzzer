@@ -605,6 +605,17 @@ button:disabled {
     margin-top: var(--spacing-xs);
     text-align: center;
 }
+.join-page {
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-md);
+    padding-bottom: 10vh;
+    gap: var(--spacing-md);
+}
 .home-page {
     width: 100%;
     min-height: 100vh;
@@ -638,6 +649,7 @@ button:disabled {
 .form-field label {
     font-weight: bold;
     text-align: right;
+    margin-right: var(--spacing-sm);
 }
 
 .form-field input {

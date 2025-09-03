@@ -33,7 +33,7 @@ WORKDIR /app
 ENV APP_ENVIRONMENT="production"
 
 COPY --from=server-builder /app/target/release/server server
-COPY ./configuration configuration
+COPY ./server/configuration configuration
 
 COPY --from=frontend-builder /app/dist/public dist
 
